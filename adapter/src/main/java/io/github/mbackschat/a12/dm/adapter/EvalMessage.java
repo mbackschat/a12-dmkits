@@ -23,6 +23,9 @@ import java.util.Optional;
  * @param referenced  the fields the rule read ({@code getReferencedFieldsPointers}) — its operands
  * @param fillToFix   for an OMISSION error, the fields that — if filled — would clear it
  *                    ({@code getRefOmissionErrorResponsiblePointers}); empty for a VALUE error
+ *
+ * <p>Built via {@link #builder()}: four of its channels are strings, which a positional constructor lets a caller
+ * swap silently.
  */
 public record EvalMessage(String errorCode, Optional<String> rulePath, FieldPointer field,
         String severity, String messageType, String message,
@@ -31,5 +34,35 @@ public record EvalMessage(String errorCode, Optional<String> rulePath, FieldPoin
     public EvalMessage {
         referenced = List.copyOf(referenced);
         fillToFix = List.copyOf(fillToFix);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /** Collects the channels; an address list left unset is empty, and so is a {@code null} rule path. */
+    public static final class Builder {
+        private String errorCode;
+        private String rulePath;
+        private FieldPointer field;
+        private String severity;
+        private String messageType;
+        private String message;
+        private List<FieldPointer> referenced = List.of();
+        private List<FieldPointer> fillToFix = List.of();
+
+        public Builder errorCode(String v) { this.errorCode = v; return this; }
+        public Builder rulePath(String v) { this.rulePath = v; return this; }
+        public Builder field(FieldPointer v) { this.field = v; return this; }
+        public Builder severity(String v) { this.severity = v; return this; }
+        public Builder messageType(String v) { this.messageType = v; return this; }
+        public Builder message(String v) { this.message = v; return this; }
+        public Builder referenced(List<FieldPointer> v) { this.referenced = v; return this; }
+        public Builder fillToFix(List<FieldPointer> v) { this.fillToFix = v; return this; }
+
+        public EvalMessage build() {
+            return new EvalMessage(errorCode, Optional.ofNullable(rulePath), field, severity, messageType, message,
+                    referenced, fillToFix);
+        }
     }
 }

@@ -61,7 +61,6 @@ import java.util.regex.Pattern;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
-import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.UpdateAction;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
@@ -75,9 +74,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService;
-import com.mgmtp.a12.kernel.md.rt.api.IDocumentValidationResult;
 import com.mgmtp.a12.kernel.md.rt.api.ILabelProvider;
-import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 import com.mgmtp.a12.kernel.md.document.api.services.DocumentDeserializationConfig;
 import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
@@ -1143,7 +1140,7 @@ public final class KernelAdapter {
      */
     public EvalResult evaluate(String documentJson, Locale locale) {
         DocRuntime runtime = prepare(documentJson);
-        return toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
+        return KernelMessages.toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
     }
 
     /**
@@ -1165,7 +1162,7 @@ public final class KernelAdapter {
      */
     public EvalResult evaluate(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        return toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
+        return KernelMessages.toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
     }
 
     /**
@@ -1191,25 +1188,7 @@ public final class KernelAdapter {
     private static EvalResult evaluateApplied(DocRuntime runtime, Locale locale) {
         DocumentProcessingConfig config = config(locale);
         DocumentV2 applied = runtime.rt().compute(runtime.document(), config).applyTo(runtime.document());
-        return toEvalResult(runtime.rt().validateFull(applied, config));
-    }
-
-    /** Map a kernel {@link IDocumentValidationResult} to the JDK-only {@link EvalResult} (shared by both paths). */
-    private static EvalResult toEvalResult(IDocumentValidationResult result) {
-        List<EvalMessage> messages = new ArrayList<>();
-        for (IMessage m : result.getMessages()) {
-            messages.add(new EvalMessage(m.getErrorCode(), m.getRulePath(),
-                    fieldPointer(m.getErrorFieldPointer()), m.getSeverity().name(),
-                    m.getMessageType().name(), m.getErrorText(),
-                    m.getReferencedFieldsPointers().stream().map(KernelAdapter::fieldPointer).toList(),
-                    m.getRefOmissionErrorResponsiblePointers().stream().map(KernelAdapter::fieldPointer).toList()));
-        }
-        return new EvalResult(messages);
-    }
-
-    /** Boundary conversion (N8): a kernel field pointer → JDK-only {@link FieldPointer} (path + indices). */
-    private static FieldPointer fieldPointer(PartiallyKnownDocumentMultiPointer p) {
-        return new FieldPointer(p.fullName(), p.repetitionIndexes());
+        return KernelMessages.toEvalResult(runtime.rt().validateFull(applied, config));
     }
 
     /** The kernel's sentinel {@code rulePath} for a formal check (vs. an author rule, whose path starts with {@code /}). */
