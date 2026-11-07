@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -63,7 +62,7 @@ public final class ModelWriter {
      * model's declared condition language; the raw-slot overload remains verbatim.
      */
     public static String addRule(String modelJson, Rule rule) {
-        return insertTyped(modelJson, rule.group().path().value(), language -> ruleNode(rule, language));
+        return insertTyped(modelJson, rule.group().path().value(), language -> ruleNode(rule.draft(language)));
     }
 
     /**
@@ -73,18 +72,17 @@ public final class ModelWriter {
      */
     public static String addRule(String modelJson, String groupPath, String name, String errorEntityRelPath,
             String errorCode, String errorCondition, String severity, List<LocalizedText> messages) {
-        return DmJson.insertIntoGroup(modelJson, groupPath, ruleNode(groupPath + "/" + name, name, errorEntityRelPath,
-                errorCode, errorCondition, severity, messages, Optional.empty()));
+        return addRule(modelJson, DraftRule.builder().groupPath(groupPath).name(name)
+                .errorEntityRelPath(errorEntityRelPath).errorCode(errorCode).errorCondition(errorCondition)
+                .severity(severity).messages(messages).build());
     }
 
     /**
      * Returns {@code modelJson} with {@code rule} added to its group, every member the draft carries written
-     * verbatim with {@code messages} as its error texts. The caller is expected to have validated it first.
+     * verbatim. The caller is expected to have validated it first.
      */
-    public static String addRule(String modelJson, DraftRule rule, List<LocalizedText> messages) {
-        return DmJson.insertIntoGroup(modelJson, rule.groupPath(), ruleNode(rule.groupPath() + "/" + rule.name(),
-                rule.name(), rule.errorEntityRelPath(), rule.errorCode(), rule.errorCondition(), rule.severity(),
-                messages, rule.possibleCauses()));
+    public static String addRule(String modelJson, DraftRule rule) {
+        return DmJson.insertIntoGroup(modelJson, rule.groupPath(), ruleNode(rule));
     }
 
     /**
@@ -217,7 +215,7 @@ public final class ModelWriter {
             Map<String, ArrayNode> elementsByGroup = new HashMap<>();
             for (Rule rule : rules) {
                 Objects.requireNonNull(rule, "rule");
-                elements(root, elementsByGroup, rule.group().path().value()).add(ruleNode(rule, language));
+                elements(root, elementsByGroup, rule.group().path().value()).add(ruleNode(rule.draft(language)));
             }
             for (Computation computation : computations) {
                 Objects.requireNonNull(computation, "computation");
@@ -457,7 +455,7 @@ public final class ModelWriter {
             body.put("commonPrecondition", c.commonPrecondition());
         }
         if (c.errorCode() != null) {
-            body.put("errorCode", c.errorCode());
+            body.put(DmKeys.ERROR_CODE, c.errorCode());
         }
         ArrayNode alternatives = body.putArray("computationAlternatives");
         for (DraftComputation.Alternative alternative : c.alternatives()) {
@@ -477,28 +475,20 @@ public final class ModelWriter {
         return node;
     }
 
-    /** A typed rule's element node, its condition rendered in {@code language}. */
-    private static ObjectNode ruleNode(Rule rule, ConditionLanguage language) {
-        return ruleNode(rule.group().path() + "/" + rule.name(), rule.name(), rule.errorEntityRelPath(), rule.code(),
-                rule.render(language), rule.severity().name(), rule.messages(), rule.possibleCauseFilter());
-    }
-
-    /** Build a {@code Rule} element node from its slots, in the order A12's {@code RuleSerializer} writes them. */
-    private static ObjectNode ruleNode(String id, String name, String errorEntityRelPath, String errorCode,
-            String errorCondition, String severity, List<LocalizedText> messages,
-            Optional<PossibleCauseFilter> possibleCauses) {
+    /** Build a {@code Rule} element node from its draft, in the order A12's {@code RuleSerializer} writes it. */
+    private static ObjectNode ruleNode(DraftRule rule) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Rule");
-        node.put("id", id);
-        node.put("name", name);
+        node.put("id", rule.groupPath() + "/" + rule.name());
+        node.put("name", rule.name());
 
         ObjectNode body = node.putObject("Rule");
-        body.put("errorEntityRelPath", errorEntityRelPath);
-        body.put("errorCode", errorCode);
-        body.put("errorCondition", errorCondition);
-        body.put("severity", severity);
-        putMessages(body, messages);
-        possibleCauses.ifPresent(filter -> putPossibleCauses(body, filter));
+        body.put("errorEntityRelPath", rule.errorEntityRelPath());
+        body.put(DmKeys.ERROR_CODE, rule.errorCode());
+        body.put("errorCondition", rule.errorCondition());
+        body.put("severity", rule.severity());
+        putMessages(body, rule.messages());
+        rule.possibleCauses().ifPresent(filter -> putPossibleCauses(body, filter));
         return node;
     }
 

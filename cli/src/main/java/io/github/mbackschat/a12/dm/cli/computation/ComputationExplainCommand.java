@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -82,13 +83,7 @@ final class ComputationExplainCommand extends BaseCommand {
                     summary = computation + " is Opaque (not modeled)";
                 }
             }
-            ObjectNode explained = (ObjectNode) data;
-            adapter.computationAdditionalParserInformation(computation)
-                    .ifPresent(preamble -> explained.put("additionalParserInformation", preamble));
-            adapter.computationErrorCode(computation).ifPresent(code -> explained.put("errorCode", code));
-            // Owner-level like the preamble: an explained formula already carries the same value, an Opaque
-            // one has no other source for it.
-            adapter.computationRoundingMode(computation).stored().ifPresent(mode -> explained.put("roundingMode", mode));
+            ReadPayloads.putOwnerMembers((ObjectNode) data, adapter, computation);
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());

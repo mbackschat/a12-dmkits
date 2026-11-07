@@ -193,12 +193,24 @@ public final class ReadPayloads {
         return data;
     }
 
+    /**
+     * A computation's own members, which A12 keeps apart from its formula, so an Opaque formula still shows them:
+     * the stored preamble and error code when declared, and the rounding mode, absent meaning Exact as in the stored
+     * model, since A12's serializer never writes Exact.
+     */
+    public static void putOwnerMembers(ObjectNode data, KernelAdapter adapter, String computation) {
+        adapter.computationAdditionalParserInformation(computation)
+                .ifPresent(preamble -> data.put("additionalParserInformation", preamble));
+        adapter.computationErrorCode(computation).ifPresent(code -> data.put(DmKeys.ERROR_CODE, code));
+        adapter.computationRoundingMode(computation).stored().ifPresent(mode -> data.put("roundingMode", mode));
+    }
+
     /** The filter in {@code rule add}'s own form: absolute paths, under the keys the spec takes. */
     private static void putPossibleCauses(ObjectNode data, PossibleCauseFilter filter, String group) {
         ObjectNode causes = data.putObject(PossibleCauseSpec.KEY);
-        ArrayNode ifFilled = causes.putArray("ifFilled");
+        ArrayNode ifFilled = causes.putArray(PossibleCauseSpec.IF_FILLED);
         filter.entityPathsIfFilled(group).forEach(ifFilled::add);
-        ArrayNode ifNotFilled = causes.putArray("ifNotFilled");
+        ArrayNode ifNotFilled = causes.putArray(PossibleCauseSpec.IF_NOT_FILLED);
         filter.entityPathsIfNotFilled(group).forEach(ifNotFilled::add);
     }
 
@@ -259,12 +271,7 @@ public final class ReadPayloads {
         data.put("computation", computation);
         // Structural, so it is present for an Opaque read too: a computation's full name IS its group + name.
         data.put("group", computation.substring(0, computation.lastIndexOf('/')));
-        adapter.computationAdditionalParserInformation(computation)
-                .ifPresent(preamble -> data.put("additionalParserInformation", preamble));
-        adapter.computationErrorCode(computation).ifPresent(code -> data.put("errorCode", code));
-        // Owner-level like the preamble, so an Opaque formula still shows it; absent means Exact, as in the
-        // stored model, since A12's serializer never writes Exact.
-        adapter.computationRoundingMode(computation).stored().ifPresent(mode -> data.put("roundingMode", mode));
+        putOwnerMembers(data, adapter, computation);
         switch (adapter.readComputation(computation)) {
             case ReadComputation.Converted converted -> {
                 data.put("converted", true);

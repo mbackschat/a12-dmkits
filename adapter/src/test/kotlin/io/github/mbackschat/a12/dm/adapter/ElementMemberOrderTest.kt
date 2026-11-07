@@ -65,7 +65,7 @@ class ElementMemberOrderTest {
 
     @Test
     fun aWrittenRuleKeepsA12sMemberOrder() {
-        assertA12Order(ModelWriter.addRule(model, rule, messages), "/Subscription/Billing/BaseFeeRule")
+        assertA12Order(ModelWriter.addRule(model, rule.withMessages(messages)), "/Subscription/Billing/BaseFeeRule")
     }
 
     @Test
@@ -84,7 +84,7 @@ class ElementMemberOrderTest {
     /** The note follows the descriptions and precedes the body, on an element; a type definition is measured too. */
     @Test
     fun aChangeNoteSitsWhereA12WritesIt() {
-        val typed = MAPPER.readTree(ModelDocument.read(ModelWriter.addRule(model, rule, messages))
+        val typed = MAPPER.readTree(ModelDocument.read(ModelWriter.addRule(model, rule.withMessages(messages)))
             .addTypeDefinition("FeeCode", FieldKind.STRING).toJson())
         // A12 also writes a revision on a type definition, which no kit authors, so it is spliced in to be placed.
         (typeDefinition(typed) as ObjectNode).put("revision", "3")

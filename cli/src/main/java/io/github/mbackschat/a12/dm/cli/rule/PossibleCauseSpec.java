@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 
 /**
  * The {@code possibleCauses} key that {@code rule add} and {@code apply}'s rule add share: two lists of entities named
@@ -17,7 +18,9 @@ import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 public final class PossibleCauseSpec {
 
     public static final String KEY = "possibleCauses";
-    private static final List<String> LISTS = List.of("ifFilled", "ifNotFilled");
+    public static final String IF_FILLED = "ifFilled";
+    public static final String IF_NOT_FILLED = "ifNotFilled";
+    private static final List<String> LISTS = List.of(IF_FILLED, IF_NOT_FILLED);
 
     private PossibleCauseSpec() {
     }
@@ -26,8 +29,21 @@ public final class PossibleCauseSpec {
     public record Refusal(String at, String summary, String fix) {
     }
 
-    /** The first entry this key cannot carry, for a rule in {@code group}; empty when the key reads. */
-    public static Optional<Refusal> refusal(JsonNode spec, String group) {
+    /**
+     * Sets {@code draft}'s filter from the key, for a rule in {@code group}, and answers empty; when the key cannot
+     * be read, answers the first entry it cannot carry and leaves the draft as it was.
+     */
+    public static Optional<Refusal> applyTo(DraftRule.Builder draft, JsonNode spec, String group) {
+        Optional<Refusal> refusal = refusal(spec, group);
+        if (refusal.isEmpty() && spec.has(KEY)) {
+            JsonNode causes = spec.get(KEY);
+            draft.possibleCauses(PossibleCauseFilter.ofEntities(group, paths(causes.path(IF_FILLED)),
+                    paths(causes.path(IF_NOT_FILLED))));
+        }
+        return refusal;
+    }
+
+    private static Optional<Refusal> refusal(JsonNode spec, String group) {
         if (!spec.has(KEY)) {
             return Optional.empty();
         }
@@ -47,16 +63,6 @@ public final class PossibleCauseSpec {
             }
         }
         return Optional.empty();
-    }
-
-    /** The filter the key names for a rule in {@code group}; call only once {@link #refusal} is empty. */
-    public static Optional<PossibleCauseFilter> filter(JsonNode spec, String group) {
-        if (!spec.has(KEY)) {
-            return Optional.empty();
-        }
-        JsonNode causes = spec.get(KEY);
-        return Optional.of(PossibleCauseFilter.ofEntities(group, paths(causes.path("ifFilled")),
-                paths(causes.path("ifNotFilled"))));
     }
 
     // A relative entry is unambiguous here, unlike an error field's: A12 stores a cause relative to the rule's

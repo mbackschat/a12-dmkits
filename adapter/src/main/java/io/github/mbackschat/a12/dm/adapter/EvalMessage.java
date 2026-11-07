@@ -13,6 +13,9 @@ import java.util.Set;
  * {@code "formalePruefung"} with a kernel formal-error {@code errorCode} — so a {@code rulePath} starting
  * with {@code /} is the author-rule discriminator the consumer needs.
  *
+ * <p>Built via {@link #builder()}: four of its channels are strings, which a positional constructor lets a caller
+ * swap silently.
+ *
  * @param errorCode   the rule's error code (or the kernel's formal-error code)
  * @param rulePath    the firing rule's full slash-path, or {@code "formalePruefung"} for a formal check
  * @param field       the offending field's instance pointer ({@code getErrorFieldPointer}) — the row it hit
@@ -27,9 +30,6 @@ import java.util.Set;
  * @param possiblyCausing the groups of possibly-causing entities ({@code getGroupsOfPossiblyCausingEntities},
  *                    KERNEL-FINDINGS KF683); a {@link FieldPointer} carries no missed key, so two members that
  *                    differ only by theirs read as one, as the interpreter's do (INTERPRETER-GAPS IG188)
- *
- * <p>Built via {@link #builder()}: four of its channels are strings, which a positional constructor lets a caller
- * swap silently.
  */
 public record EvalMessage(String errorCode, Optional<String> rulePath, FieldPointer field,
         String severity, String messageType, String message,

@@ -143,17 +143,16 @@ final class RuleAddCommand extends BaseCommand {
             return rejectSpecParse(RkCode.ERROR_FIELD_OUTSIDE_GROUP,
                     "field " + field + " must be inside the rule group " + group, "field", field);
         }
-        Optional<PossibleCauseSpec.Refusal> causeRefusal = PossibleCauseSpec.refusal(spec, group);
+        String errorEntityRelPath = EntityPath.of(group).elementReference(EntityPath.of(field));
+        DraftRule.Builder draft = DraftRule.builder().groupPath(group).name(name).errorEntityRelPath(errorEntityRelPath)
+                .errorCondition(condition).errorCode(code).severity(severity).messages(messages);
+        Optional<PossibleCauseSpec.Refusal> causeRefusal = PossibleCauseSpec.applyTo(draft, spec, group);
         if (causeRefusal.isPresent()) {
             PossibleCauseSpec.Refusal refusal = causeRefusal.get();
             return rejectSpecParse(Diagnostic.precheck(RkCode.INVALID_VALUE, refusal.summary(),
                     Diagnostic.Where.arg(null, refusal.at()), refusal.fix()));
         }
-        String errorEntityRelPath = EntityPath.of(group).elementReference(EntityPath.of(field));
         ModelResolver resolver = workspace.resolverFor(model);
-        DraftRule.Builder draft = DraftRule.builder().groupPath(group).name(name).errorEntityRelPath(errorEntityRelPath)
-                .errorCondition(condition).errorCode(code).severity(severity).messages(messages);
-        PossibleCauseSpec.filter(spec, group).ifPresent(draft::possibleCauses);
         DraftRule rule = draft.build();
 
         ValidationResult check = new RuleValidator().check(modelJson, rule, resolver);
@@ -169,7 +168,7 @@ final class RuleAddCommand extends BaseCommand {
         }
 
         String ruleFullName = group + "/" + name;
-        String persisted = ModelWriter.addRule(modelJson, rule, messages);
+        String persisted = ModelWriter.addRule(modelJson, rule);
         // G39: optional rule metadata (annotation / internal-/external-description) at add time — applied via
         // EditSession, the same path group add/modify use; the BoundModel re-bind below validates the result.
         persisted = applyMetadata(persisted, ruleFullName, spec, resolver);

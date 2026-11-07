@@ -11,6 +11,7 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
@@ -114,11 +115,11 @@ public record MetaModification(
         });
         if (removeChangeNote) {
             session.removeChangeNote(ref);
-            changed.putNull("changeNote");
+            changed.putNull(DmKeys.CHANGE_NOTE);
         }
         changeNote.ifPresent(note -> {
             session.setChangeNote(ref, note);
-            changed.put("changeNote", note);
+            changed.put(DmKeys.CHANGE_NOTE, note);
         });
     }
 

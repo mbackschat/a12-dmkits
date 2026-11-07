@@ -67,7 +67,7 @@ s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surch
         .message(en("Surcharge must not exceed the base fee.")).build());
 ```
 
-The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
+The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and `s.addRule(DraftRule)` takes a condition already rendered as text, as the CLI's `apply`/spec path does, but it's not the idiom for library code.
 
 More library idioms and the design rationale live in the [API guide](../docs/API-GUIDE.md); every doc is indexed in [`docs/`](../docs/README.md).
 

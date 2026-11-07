@@ -137,8 +137,7 @@ public record Computation(
                                 renderer.render(a.operation(), comments),
                                 a.toleranceRangeOp().orElse(null)))
                         .toList())
-                .additionalParserInformation(suppressedWarnings.isEmpty() ? null
-                        : ConditionDirectives.suppressionPreamble(language, suppressedWarnings))
+                .suppressWarnings(language, suppressedWarnings)
                 .roundingMode(roundingMode).errorCode(errorCode.orElse(null)).messages(messages).build();
     }
 

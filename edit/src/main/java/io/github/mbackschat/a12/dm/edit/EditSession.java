@@ -547,7 +547,7 @@ public final class EditSession {
 
     /** {@link #addRule(String, String, String, String, String, String, List)} for a draft, possible causes included. */
     public EditSession addRule(DraftRule rule) {
-        json = ModelWriter.addRule(json, rule, rule.messages());
+        json = ModelWriter.addRule(json, rule);
         return this;
     }
 

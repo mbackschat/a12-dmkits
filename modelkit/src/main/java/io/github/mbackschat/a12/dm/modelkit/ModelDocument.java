@@ -678,10 +678,7 @@ public final class ModelDocument {
 
     /** Set a name/value annotation on any describable element or type definition (replacing a same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
-        ObjectNode element = metaElement(elementPath);
-        ElementMembers.upsertAnnotation(element, name, value);
-        ElementMembers.inA12Order(element);
-        return this;
+        return editMeta(elementPath, element -> ElementMembers.upsertAnnotation(element, name, value));
     }
 
     /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
@@ -697,18 +694,12 @@ public final class ModelDocument {
      * text for an existing locale.
      */
     public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
-        ObjectNode element = metaElement(elementPath);
-        LocalizedEntries.upsert(element, DmKeys.INTERNAL_DESCRIPTION, locale, text);
-        ElementMembers.inA12Order(element);
-        return this;
+        return editMeta(elementPath, element -> LocalizedEntries.upsert(element, DmKeys.INTERNAL_DESCRIPTION, locale, text));
     }
 
     /** Upsert one per-locale {@code externalDescription} entry on the element at {@code elementPath} (end-user text). */
     public ModelDocument setExternalDescription(String elementPath, String locale, String text) {
-        ObjectNode element = metaElement(elementPath);
-        LocalizedEntries.upsert(element, DmKeys.EXTERNAL_DESCRIPTION, locale, text);
-        ElementMembers.inA12Order(element);
-        return this;
+        return editMeta(elementPath, element -> LocalizedEntries.upsert(element, DmKeys.EXTERNAL_DESCRIPTION, locale, text));
     }
 
     /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
@@ -725,8 +716,13 @@ public final class ModelDocument {
 
     /** Set the {@code changeNote} of any describable element or type definition, replacing one it carries. */
     public ModelDocument setChangeNote(String elementPath, String note) {
+        return editMeta(elementPath, element -> ElementMembers.setChangeNote(element, note));
+    }
+
+    // A metadata write adds a member, so the element is put back in the order A12 writes its members.
+    private ModelDocument editMeta(String elementPath, Consumer<ObjectNode> edit) {
         ObjectNode element = metaElement(elementPath);
-        ElementMembers.setChangeNote(element, note);
+        edit.accept(element);
         ElementMembers.inA12Order(element);
         return this;
     }

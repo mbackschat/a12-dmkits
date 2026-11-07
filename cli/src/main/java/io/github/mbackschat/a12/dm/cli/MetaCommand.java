@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -133,7 +134,7 @@ final class MetaCommand extends BaseCommand {
             putMap(data.putObject("internalDescription"), doc.internalDescription(ref));
             putMap(data.putObject("externalDescription"), doc.externalDescription(ref));
             putMap(data.putObject("annotations"), doc.annotations(ref));
-            doc.changeNote(ref).ifPresent(note -> data.put("changeNote", note));
+            doc.changeNote(ref).ifPresent(note -> data.put(DmKeys.CHANGE_NOTE, note));
             // ModelDocument.read parses and indexes; no consistency gate runs on this path, so no verdict and no
             // provenance are claimed (this verb was one of the seven measured reporting a fabricated valid:true).
             ResultEnvelope env = ResultEnvelope.queryResult(ResultIdentity.META_READ, "read metadata of " + ref, data,

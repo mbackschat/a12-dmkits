@@ -524,15 +524,12 @@ final class ApplyCommand extends BaseCommand {
                 if (op.path("allowDifferingDecimals").asBoolean(false)) {
                     condition = ConditionDirectives.allowDifferingDecimals(session.conditionLanguage(), condition);
                 }
-                Optional<PossibleCauseSpec.Refusal> causeRefusal = PossibleCauseSpec.refusal(op, group);
-                if (causeRefusal.isPresent()) {
-                    throw new IllegalArgumentException(
-                            "rule add " + causeRefusal.get().summary() + " — " + causeRefusal.get().fix());
-                }
                 DraftRule.Builder draft = DraftRule.builder().groupPath(group).name(ruleName)
                         .errorEntityRelPath(errorEntityRelPath).errorCondition(condition).errorCode(code)
                         .severity(severity).messages(messages);
-                PossibleCauseSpec.filter(op, group).ifPresent(draft::possibleCauses);
+                PossibleCauseSpec.applyTo(draft, op, group).ifPresent(refusal -> {
+                    throw new IllegalArgumentException("rule add " + refusal.summary() + " — " + refusal.fix());
+                });
                 session.addRule(draft.build());
                 // G39: optional rule metadata at add time (annotation / internal-/external-description)
                 metadataOps(op, session, group + "/" + ruleName, changed);

@@ -3278,7 +3278,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
-  public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
   public static java.lang.String addRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> readMessages(java.lang.String, java.lang.String)
   public static java.lang.String removeComputation(java.lang.String, java.lang.String)
