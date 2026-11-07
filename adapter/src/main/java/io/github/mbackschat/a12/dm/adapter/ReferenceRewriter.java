@@ -16,8 +16,9 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
  * The reference-rewriting primitive for a reference-preserving rename/move (FEATURE-GAPS) —
  * an N8-boundary wrapper over the kernel's internal {@code MoveSupportDM}. Given a model as DM-JSON and a
  * map of {@code oldFullPath -> newFullPath}, it rewrites every <b>reference</b> to those paths — rule
- * conditions, error texts, computations (preconditions/operations/common precondition), and the error /
- * computed-field references — and returns the rewritten DM-JSON.
+ * conditions, error texts, computations (preconditions/operations/common precondition), the error /
+ * computed-field references, and a rule's possible-cause filter ({@link PossibleCauseMoves}, which A12's move
+ * support leaves alone) — and returns the rewritten DM-JSON.
  *
  * <p>It lives in {@code adapter} (not core) because {@code MoveSupportDM} is {@code @OnlyForUsage}
  * kernel-internal API — exactly the internal tier this module isolates behind the N8/D15 boundary. One
@@ -48,6 +49,7 @@ public final class ReferenceRewriter {
             // serializing the wrapper reflects it (getInternDocumentModel unwraps — shared state).
             DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(model);
             MoveSupportDM.changePathReferencesForMove(intern, entityMoves);
+            PossibleCauseMoves.apply(intern, entityMoves);
             StringWriter writer = new StringWriter();
             serializer.serialize(model, writer, notification -> { });
             return writer.toString();
