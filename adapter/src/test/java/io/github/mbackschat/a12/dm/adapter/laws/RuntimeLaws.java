@@ -614,8 +614,9 @@ public final class RuntimeLaws {
     }
 
     /** Run the kernel's {@code validateFull} over the instance, in the given locale (the modern {@link DocumentV2}
-     *  + {@link DocumentProcessingConfig} path — the deprecated {@code validateFull(IDocument, Locale)} form is gone). */
-    private static IDocumentValidationResult validate(String modelJson, Doc doc, Locale locale) {
+     *  + {@link DocumentProcessingConfig} path — the deprecated {@code validateFull(IDocument, Locale)} form is gone).
+     *  A law that reads a channel {@link Msg} does not carry takes the result's own messages. */
+    static IDocumentValidationResult validate(String modelJson, Doc doc, Locale locale) {
         KernelEngine engine = sharedKernelEngine(modelJson);
         return engine.rt.validateFull(engine.instance(doc), config(null, locale));
     }

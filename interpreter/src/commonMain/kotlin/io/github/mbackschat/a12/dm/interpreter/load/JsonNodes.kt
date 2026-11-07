@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.load
 import io.github.mbackschat.a12.dm.interpreter.JavaIntBinding
 import io.github.mbackschat.a12.dm.interpreter.bindJavaInt
 import io.github.mbackschat.a12.dm.interpreter.bindJavaPrimitiveInt
+import io.github.mbackschat.a12.dm.interpreter.model.PossibleCauseFilter
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -81,4 +82,14 @@ internal fun JsonElement?.isNumberNode(): Boolean {
 internal fun JsonElement?.isTextual(): Boolean {
     val p = this as? JsonPrimitive ?: return false
     return p !is JsonNull && p.isString
+}
+
+/** A rule body's `filterForPossiblyCausingEntities`, null when absent; an absent list inside it is empty, as A12
+ *  omits an empty list from a filter it still writes (KERNEL-FINDINGS KF682). */
+internal fun possibleCauseFilter(rule: JsonElement?): PossibleCauseFilter? {
+    if (!rule.hasNonNull("filterForPossiblyCausingEntities")) return null
+    val filter = rule.path("filterForPossiblyCausingEntities")
+    fun entries(list: String) = filter.path(list).elements().map { it.path("relativePath").asText() }
+    return PossibleCauseFilter(entries("entitiesEnabledAsPossibleCauseIfFilled"),
+        entries("entitiesEnabledAsPossibleCauseIfNotFilled"))
 }

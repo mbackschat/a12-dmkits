@@ -848,9 +848,11 @@ class DmInterpreter private constructor(
                     else joinedList(directRefs.filter { it in prepared.omissionReferences }
                         .map { pointers.of(it, pass, ctx) }.distinct(), rnuPointers)
                 } else emptyList()
+                val causes = possiblyCausingEntityGroups(prepared.causingEntities, firedType,
+                    RowEntityPresence(pass, ctx, interp, pointers, errorPath), { pointers.of(it, pass, ctx) }, rnuPointers)
                 return RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     errorPointer(ctx), rule.severity, firedType, text, referenced,
-                    fillToFix))
+                    fillToFix, causes))
             }
             // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
             // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
@@ -866,9 +868,11 @@ class DmInterpreter private constructor(
                 outcomes += rowOutcome(ctx)
             } catch (failure: RuntimeEvaluationFailure) {
                 val first = iterationContexts.first()
+                // A12 names no entity for a failure: one empty group (`MainValidatorController`, source-read).
                 outcomes += RowOutcome.Fired(Message(rule.errorCode, rule.path,
                     errorPointer(first), rule.severity, MsgType.VALUE,
-                    "An error occurred while evaluating the data check: ${failure.message}"))
+                    "An error occurred while evaluating the data check: ${failure.message}",
+                    groupsOfPossiblyCausingEntities = listOf(emptySet())))
                 break
             }
         }

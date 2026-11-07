@@ -65,7 +65,10 @@ internal class ValidationPass(
      * (KERNEL-FINDINGS KF549, `adapter.laws.SelectedErrorReanchorEligibilityDiffTest`).
      */
     fun checkedKeyValue(ctx: EvalContext, path: String): String? =
-        if (invalidOperand(ctx, path)) null else ctx.displayValue(path)
+        if (readsAsKey(ctx, path)) ctx.displayValue(path) else null
+
+    /** Whether the key field at [path] is check-relevant, the condition under which [checkedKeyValue] reads it. */
+    fun readsAsKey(ctx: EvalContext, path: String): Boolean = !invalidOperand(ctx, path)
 
     val partial: Boolean = config.cellRelevant != null
     private val scopeMemo = ScopeMemo()

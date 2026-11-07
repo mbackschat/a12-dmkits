@@ -259,6 +259,65 @@ private fun messageReferences(expr: Expr, wildcardBindDepth: Int?): List<Message
     else -> emptyList()
 }
 
+/**
+ * The operands [cond] reads as GROUPS: a group predicate's (`GroupFilled`, `GroupNotFilled`, the group-list
+ * quantifiers), `NumberOfFilledGroups`', and a `SumOfTerms` iteration. Every other group operand is a list of the
+ * fields it holds, which A12's parser has expanded before it looks for references, so only these stay a group in
+ * the entities a message names (`ReferencedIdsUtil.getReferencedIds4MetaReferences` over the unexpanded condition,
+ * source-read; KERNEL-FINDINGS KF683). Each is the [messageReferences] reference of its operand, so the two compare
+ * equal; a field among these operands is returned too, and the caller keeps the groups. With [omission], the
+ * operands that cannot cause an omission are left out exactly as [omissionReferences] leaves them out.
+ */
+internal fun groupOperandReferences(cond: Cond, omission: Boolean): List<MessageReference> =
+    GroupOperandWalk(omission).of(cond, null)
+
+private class GroupOperandWalk(private val omission: Boolean) {
+
+    fun of(cond: Cond, depth: Int?): List<MessageReference> = when (cond) {
+        is Cond.Cmp -> {
+            val counted = !(omission && countsUpward(cond))
+            of(cond.left, depth, counted) + of(cond.right, depth, counted)
+        }
+        is Cond.Tolerance -> of(cond.left, depth) + of(cond.right, depth)
+        is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { of(it, depth) }
+        is Cond.And -> of(cond.left, depth) + of(cond.right, depth)
+        is Cond.Or -> of(cond.left, depth) + of(cond.right, depth)
+        is Cond.Not -> of(cond.c, depth)
+        is Cond.Pred -> {
+            val op = PredicateOp.byName(cond.name)
+            val readsGroups = op == PredicateOp.GROUP_FILLED || op == PredicateOp.GROUP_NOT_FILLED || op?.countsGroups == true
+            val counted = !(omission && op?.readsForOmission() == false)
+            cond.args.flatMap { arg ->
+                (if (readsGroups && counted) ownReferences(arg, depth) else emptyList()) + of(arg, depth, counted)
+            }
+        }
+        is Cond.Pattern -> of(cond.value, depth) + of(cond.pattern, depth)
+        is Cond.Custom -> emptyList()
+    }
+
+    // [counted] is false for an operand only a filter of which can cause an omission; its filters are still walked.
+    private fun of(expr: Expr, depth: Int?, counted: Boolean = true): List<MessageReference> = when (expr) {
+        is Expr.Star -> expr.having?.let { of(it, expr.bindDepth) }.orEmpty()
+        is Expr.TermSum -> (if (counted) listOf(MessageReference.Wildcard(expr.iteration.path, expr.iteration.bindDepth))
+            else emptyList()) + of(expr.iteration, depth) + of(expr.term, expr.iteration.bindDepth, counted)
+        is Expr.Func -> expr.args.flatMap { arg ->
+            (if (counted && FunctionOp.byName(expr.name) == FunctionOp.NUMBER_OF_FILLED_GROUPS) ownReferences(arg, depth)
+                else emptyList()) + of(arg, depth, counted)
+        }
+        is Expr.Arith -> of(expr.left, depth, counted) + of(expr.right, depth, counted)
+        is Expr.EntitySpec -> of(expr.source, depth)
+        else -> emptyList()
+    }
+}
+
+/** The reference [messageReferences] makes of the operand itself, without its filter's. */
+private fun ownReferences(operand: Expr, wildcardBindDepth: Int?): List<MessageReference> = when (operand) {
+    is Expr.Star -> listOf(MessageReference.Wildcard(operand.path, operand.bindDepth))
+    is Expr.EntitySpec -> if (operand.semanticIndex == null) ownReferences(operand.source, wildcardBindDepth)
+        else messageReferences(operand, wildcardBindDepth).take(1)
+    else -> messageReferences(operand, wildcardBindDepth)
+}
+
 private fun selectedReference(path: String, literal: String?, keyField: String?): MessageReference? = when {
     literal != null -> MessageReference.Selected(path, SelectedKey.Literal(literal))
     keyField != null -> MessageReference.Selected(path, SelectedKey.Field(keyField))

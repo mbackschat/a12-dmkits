@@ -184,6 +184,10 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
             messageReferences = directMessageRefs,
             omissionReferences = withJoinIndexes(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null)
                 .flatMap(::expandMessageReference)).toSet(),
+            causingEntities = causingEntityCandidates(rule, model,
+                causingReferences(iteration, rawMessageRefs, groupOperandReferences(ast, omission = false)),
+                causingReferences(iteration, omissionReferences(ast, excludeRepetitionNotUniqueKeys = rnu != null),
+                    groupOperandReferences(ast, omission = true))),
             skippedInPartial = starRefs(ast).any { it.having != null } || errorPath in model.groupPaths,
             reachObservable = reachIsObservable(ast),
             classifies = classificationEnabled(ast) { path -> path in model.groupPaths && pathParts(path).size == 1 },
@@ -230,6 +234,34 @@ internal class ModelStaticPlans private constructor(private val model: ModelDef)
                 is MessageReference.Selected -> error("a selected reference expands through expandSelectedReference")
             }
         }
+    }
+
+    /**
+     * The entities a fired message may name: the referenced channel's operands, index fields and join index fields
+     * included, except that a group the condition reads AS a group stays that group, a root group too, where every
+     * other group operand names the fields it holds ([groupOperandReferences], KERNEL-FINDINGS KF683). A joined group
+     * read as a group names its index field beside it, as a field of it does.
+     */
+    private fun causingReferences(
+        iteration: IterationPlan,
+        references: List<MessageReference>,
+        groupOperands: List<MessageReference>,
+    ): List<MessageReference> {
+        val groups = groupOperands.filter { it.path !in model.kinds }
+        val fieldOperands = references.toMutableList()
+        groups.forEach { fieldOperands.remove(it) }
+        val joinedGroupIndexes = (iteration as? IterationPlan.Parallel)?.let { parallel ->
+            groups.filter { it.path in parallel.joined }.map { MessageReference.Ordinary("${it.path}/${parallel.indexName}") }
+        }.orEmpty()
+        return (withJoinIndexes(iteration, groups.flatMap(::keepGroup) + fieldOperands.flatMap(::expandMessageReference)) +
+            joinedGroupIndexes).distinct()
+    }
+
+    // A selected group stays the group at its selected row, beside that row's index field, as a selected field does.
+    private fun keepGroup(group: MessageReference): List<MessageReference> {
+        if (group !is MessageReference.Selected) return listOf(group)
+        val indexField = nearestIndexFieldOf(model.indexFields, group.path) ?: return emptyList()
+        return listOf(group.copy(indexField = indexField), group.copy(path = indexField, indexField = indexField))
     }
 
     /**

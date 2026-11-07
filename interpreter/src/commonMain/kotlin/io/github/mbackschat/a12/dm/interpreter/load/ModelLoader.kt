@@ -339,6 +339,7 @@ object ModelLoader {
                         errorEntityRelPath = body.path("errorEntityRelPath").asText(),
                         severity = Severity.valueOf(body.path("severity").asText("ERROR")),
                         messages = localizedTexts(body.path("errorMessage")),
+                        possibleCauses = possibleCauseFilter(body),
                     ),
                 )
             }

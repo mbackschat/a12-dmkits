@@ -33,6 +33,8 @@ internal data class PreparedRulePlan(
     val messageReferences: List<MessageReference>,
     /** The subset of [messageReferences] an omission names as fill-to-fix ([omissionReferences]). */
     val omissionReferences: Set<MessageReference>,
+    /** The entities a fired message may name as possibly causing it ([causingEntityCandidates]). */
+    val causingEntities: CausingEntityCandidates,
     /** The rule takes no part in partial validation: kernel codegen skips every rule containing a `Having` filter,
      *  and A12 reports no rule whose error entity is a group, even with the root relevant (KERNEL-FINDINGS KF603,
      *  `adapter.laws.GroupTargetRuntimeDiffTest`). */

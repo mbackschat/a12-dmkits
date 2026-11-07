@@ -360,7 +360,7 @@ public final class InterpreterEngine {
     private static RuleDef candidateRule(CandidateRule candidate, String message) {
         return new RuleDef(candidate.group() + "/" + candidate.name(), candidate.group(), candidate.condition(),
                 candidate.code(), candidate.errorEntityRelPath(),
-                Severity.valueOf(candidate.severity().toUpperCase()), Map.of(candidate.locale(), message));
+                Severity.valueOf(candidate.severity().toUpperCase()), Map.of(candidate.locale(), message), null);
     }
 
     /** The candidate as the focused routes build it — reference gate and {@code rule eval} must see one rule. */

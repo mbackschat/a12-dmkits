@@ -40,6 +40,7 @@ class ComputationDiagnosticAssemblyTest {
         errorPointer = A12PartiallyKnownMultiPointer.of(FIELD, reps),
         severity = Severity.ERROR,
         type = MsgType.VALUE,
+        groupsOfPossiblyCausingEntities = emptyList(),
     )
 
     private companion object { const val FIELD = "/Parcel/Tags/Identifier" }

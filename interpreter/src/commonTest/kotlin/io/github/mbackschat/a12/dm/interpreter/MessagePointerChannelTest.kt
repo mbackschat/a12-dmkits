@@ -101,6 +101,7 @@ class MessagePointerChannelTest {
                 type = MsgType.OMISSION,
                 referencedPointers = listOf(referenced),
                 fillToFixPointers = listOf(fillToFix),
+                groupsOfPossiblyCausingEntities = emptyList(),
             ),
         )
 

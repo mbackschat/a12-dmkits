@@ -17006,3 +17006,38 @@ So the candidates are the referenced fields, a group operand, the rule's own gro
 A list of 1 001 entries also draws a codeless capacity sentence ("The index for group '/MVK/Rules/CustomRefErrorEntities/CustomRefErrorEntityIfFilled' was specified with 1001, but at most 1000 is allowed."), while 1 000 entries draw only the reference class ([DG182](CONSISTENCY-GAPS.md)). A12 states both the reference class and the duplicate before another rule's condition class, whatever the declaration order; the agreement below compares class sets, not order.
 
 *Locked by:* `adapter.laws.CheckerPossibleCauseFilterAgreementTest`, A12's classes and the portable checker's (`CheckFamily.POSSIBLE_CAUSE_FILTER`) row by row.
+
+## §13 supplement — a fired message names its possibly-causing entities in groups: for an omission the unfilled ones, then the filled ones (runtime, differential, kernel 31.3.1, 2026-11-07) <a id="kf683"></a>
+
+> Fold: pending — the message's cause channel, beside §13's referenced and fill-to-fix pointers.
+
+Kernel 31.3.1's `IMessage.getGroupsOfPossiblyCausingEntities()` is a list of pointer sets. For a rule's message, code generation fixes two candidate sets per rule, and the runtime asks one question of each candidate at the firing row (`MainValidatorController.createCause`, `RegelReferenzenErmittler`, source-read; every row below measured on both kernel strategies, which agree):
+
+| step | what A12 does |
+|---|---|
+| candidates, no filter | *given*: the referenced-fields visitor (`ReferencedIdsUtil.getReferencedIds4MetaReferences`, index fields added) run over the UNEXPANDED condition with groups kept. So a selected operand names its selected row and that row's index field, a parallel iteration adds the join index field, and a `Having` body's fields count. *Not given*: the subset that can cause an omission, the fill-to-fix channel's selection |
+| a group operand | stays the GROUP where the condition reads it as one — `GroupFilled`, `GroupNotFilled`, the group-list quantifiers, `NumberOfFilledGroups`, a `SumOfTerms` iteration; a root group too. Everywhere else (`AllFieldsFilled(RuleGroup)`, `FirstFilledValue`, the date-range overlaps, value lists) the parser has already expanded it, so it names its fields |
+| candidates, filter | *given*: the referenced entities the filter's `ifFilled` list names; *not given*: those its `ifNotFilled` list names; an unlisted entity is in neither, so the other group is then empty |
+| given | at least one instance filled — `AtLeastOneFieldFilled`/`AtLeastOneGroupFilled` over the entity alone (`mindestensEineEntityAngegeben`) |
+| not given | not every instance filled, an aggregated level counted up to its declared capacity, absent rows included (`nichtAlleOderKeineEntityAngegeben`); an aggregated group with fewer rows than its capacity is therefore not given, where the rule-level `NotAllGroupsFilled(G*)` reads only the instantiated rows; an aggregated ROOT group is always not given (source-read) |
+| a selected entity | is asked at the row its key selects; a key that selects no row leaves it with no instance, so not given; a key field that is not check-relevant (formally invalid, or irrelevant) leaves it neither given nor not given |
+| `RepetitionNotUnique` | its key cells are named per row of the reported duplicate cluster, each by its own presence, so an empty key is not given |
+| groups | OMISSION: `[not given, given − not given]`; VALUE: `[given ∪ not given]`. An aggregated level is the wildcard `0` |
+| other messages | a formal check, `mandatoryField` included, names its own cell: `[[cell]]`; an evaluation fault names nothing: `[[]]` (`StoredDateCalendarDiffTest`) |
+
+Carrier: `/Policy` holding `Premium`, `Holder`, a required `Ref`, a group `Rider` holding `Code`, and a five-row `Lines` holding `Amount` and `Note`; a second root `Agent` holding `Name`. Document: `Premium` 200, `Lines` rows 1 and 2 with an `Amount`, row 2 with `Note` `x`.
+
+| condition (rule group) | groups |
+|---|---|
+| `FieldNotFilled(Holder)` | `[[Holder], []]` |
+| `FieldFilled(Premium) And GroupNotFilled(Rider)` | `[[Rider], [Premium]]` — the group, where fill-to-fix names `Rider/Code` |
+| `FieldFilled(Premium) And GroupNotFilled(/Agent)` | `[[/Agent[1]], [Premium]]`, while fill-to-fix is empty |
+| `Sum(Lines*/Amount) < [Premium]` | `[[Lines[0]/Amount], [Premium]]`; with all five rows filled it fires as VALUE: `[[Lines[0]/Amount, Premium]]` |
+| `Sum(Lines*/Amount Having [Note] == "x") < [Premium]`, all five `Amount`s filled, no `Note` | `[[Lines[0]/Note], [Lines[0]/Amount, Premium]]` — the filter does not narrow the instances asked about |
+| `FieldFilled(Amount) And FieldNotFilled(Note)` (`/Policy/Lines`), row 1 | `[[Lines[1]/Note], [Lines[1]/Amount]]` |
+| `FieldFilled(Premium) And FieldNotFilled(Holder)`, filter `ifNotFilled [Holder]` / `ifFilled [Premium]` | `[[Holder], []]` / `[[], [Premium]]` |
+| `zahlHatUngueltigeZeichen` on `Premium` `abc`; `mandatoryField` on `Ref` | `[[Premium]]`; `[[Ref]]` |
+
+**A missed key is named once per key.** A12's pointer carries the key that selected no row (`semanticIndexValueForUnknownIndexGroup`), typed as the index field is — `String` `A` for a text index, `BigDecimal` `7` for a number one — and its equality includes it, so `[Claims/Cost For "A"]` and `[Claims/Cost For "B"]` missing the same group are two members of one set, `Claims[-5]/Cost` twice. The interpreter's pointer has no such member yet ([IG188](INTERPRETER-GAPS.md#ig188)).
+
+*Locked by:* `adapter.laws.PossiblyCausingEntitiesLawsTest` (kernel and interpreter), and the `causes` channel every `DocumentDifferential.assertAgree` compares across dynamic Groovy, static Java and the interpreter — measured 2026-11-07 over the whole `:adapter:test` lane, where it separated each mechanism above: selected rows (`SelectedMessageReferenceDiffTest`), join index fields (`JoinedRowListQuantifierDiffTest`), field-list expansion (`RuleGroupCountPolarityDiffTest`), the capacity walk (`SumOfTermsRuntimeLawsTest`, `SchemaContainsCountDiffTest`), duplicate keys (`RepetitionNotUniqueSiblingGroupKeyDiffTest`) and the unreadable key (`SelectedErrorReanchorEligibilityDiffTest`).

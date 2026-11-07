@@ -318,7 +318,8 @@ data class FieldDef(
  * One rule: an *error* condition (it FIRES when the condition holds — the polarity law) evaluated once
  * per row of its iteration scope [group]. [errorEntityRelPath] addresses the offending field relative to the
  * rule element: `../DeliveryDate` names a field in the containing group ([io.github.mbackschat.a12.dm.interpreter.resolveErrorPath]).
- * [messages] maps locale → template (for rendered text).
+ * [messages] maps locale → template (for rendered text). [possibleCauses] is the rule's
+ * `filterForPossiblyCausingEntities`, null when the rule carries none.
  */
 data class RuleDef(
     val path: String,
@@ -328,7 +329,15 @@ data class RuleDef(
     val errorEntityRelPath: String,
     val severity: Severity = Severity.ERROR,
     val messages: Map<String, String> = emptyMap(),
+    val possibleCauses: PossibleCauseFilter? = null,
 )
+
+/**
+ * A rule's `filterForPossiblyCausingEntities` as A12 stores it: the `relativePath` entries, relative to the rule's
+ * group, of the entities a fired message may name as possibly causing it when filled ([ifFilled]) or unfilled
+ * ([ifNotFilled]). Present with both lists empty it still filters, and lets nothing through (KERNEL-FINDINGS KF683).
+ */
+data class PossibleCauseFilter(val ifFilled: List<String>, val ifNotFilled: List<String>)
 
 /**
  * A computation alternative's tolerance band — the kernel's `toleranceRangeOp` (`Computation.TR{1,2,5,10}`,
@@ -848,7 +857,9 @@ data class ModelDef(
  * kernel's `IMessage`, carrying the same channels: the fired rule's [code], its [rulePath], the offending
  * entity [errorPointer], [severity], the VALUE/OMISSION [type] polarity, the rendered [text], the
  * [referencedPointers] operands, and (for an OMISSION) [fillToFixPointers] — the referenced fields that, if
- * filled, would clear the error (the kernel's `refOmissionErrorResponsible`).
+ * filled, would clear the error (the kernel's `refOmissionErrorResponsible`). [groupsOfPossiblyCausingEntities] is
+ * A12's channel of the same name: for an OMISSION, the unfilled entities that may cause it and then the filled
+ * ones; for a VALUE error, one group of both (KERNEL-FINDINGS KF683).
  *
  * <b>Every address here is A12's message pointer, and it is STORED as one.</b> `IMessage` types all three of
  * those channels as `PartiallyKnownDocumentMultiPointer`, and so do these. The house-form strings below are
@@ -866,6 +877,7 @@ data class Message(
     val text: String = "",
     val referencedPointers: List<A12PartiallyKnownMultiPointer> = emptyList(),
     val fillToFixPointers: List<A12PartiallyKnownMultiPointer> = emptyList(),
+    val groupsOfPossiblyCausingEntities: List<Set<A12PartiallyKnownMultiPointer>>,
 ) {
     /** Derived comparison projection — never stored. See the class note on why the direction is one-way. */
     val errorPath: String get() = messagePointerHouseForm(errorPointer)

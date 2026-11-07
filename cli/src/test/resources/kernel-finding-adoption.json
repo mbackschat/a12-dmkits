@@ -26149,6 +26149,69 @@
           "evidence": {}
         }
       }
+    },
+    "kf683": {
+      "sha256": "83e836117c9bb277826df52e0148e5dbc6e134aa1248f70c3fef99ca7c2437e3",
+      "task": "K313",
+      "scope": {
+        "dmkits": [],
+        "checker": [],
+        "json-schema-import": [],
+        "json-schema-export": [],
+        "adapter": [],
+        "interpreter": [
+          "possibly-causing entity groups"
+        ],
+        "dmtool-cli": [],
+        "a12-kernel-lean": []
+      },
+      "consumers": {
+        "dmkits": {
+          "state": "NOT_APPLICABLE",
+          "basis": "The kits author and read the filter (KF682); the groups are a runtime message channel.",
+          "evidence": {}
+        },
+        "checker": {
+          "state": "NOT_APPLICABLE",
+          "basis": "A runtime channel; the checker judges model consistency only.",
+          "evidence": {}
+        },
+        "json-schema-import": {
+          "state": "NOT_APPLICABLE",
+          "basis": "Import writes no rule filter and runs no rule.",
+          "evidence": {}
+        },
+        "json-schema-export": {
+          "state": "NOT_APPLICABLE",
+          "basis": "JSON Schema carries no runtime message.",
+          "evidence": {}
+        },
+        "adapter": {
+          "state": "OPEN",
+          "basis": "EvalMessage does not carry the groups yet; work item B4b-3.",
+          "evidence": {}
+        },
+        "interpreter": {
+          "state": "APPLIED",
+          "basis": "Every rule message carries A12's groups from the candidates code generation fixes, asked through the interpreter's own fill quantifiers at the firing row; formal checks name their cell and a fault names nothing.",
+          "evidence": {
+            "possibly-causing entity groups": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PossiblyCausingEntitiesLawsTest.kt#anOmissionNamesTheEmptyEntitiesFirstAndTheFilledOnesSecond",
+              "witness": "The interpreter's groups equal the kernel's on every row of the grid, and the causes channel of every assertAgree differential agrees across the adapter lane."
+            }
+          }
+        },
+        "dmtool-cli": {
+          "state": "OPEN",
+          "basis": "No verb reports the groups yet; work item B4b-3.",
+          "evidence": {}
+        },
+        "a12-kernel-lean": {
+          "state": "OPEN",
+          "basis": "Not yet handed over; it goes in batch letter B6.",
+          "evidence": {}
+        }
+      }
     }
   }
 }

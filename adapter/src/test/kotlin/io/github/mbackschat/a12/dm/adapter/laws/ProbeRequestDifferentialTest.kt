@@ -72,7 +72,7 @@ class ProbeRequestDifferentialTest {
     fun aDisagreementNamesEachSidesOwnLinesPerChannel() {
         val shared = MessageSignature.fields("LARGE", "VALUE_ERROR", "/Policy/Claims/Amount", listOf(), listOf())
         val kernelOnly = MessageSignature.fields("LATE", "VALUE_ERROR", "/Policy/Claims/ReportedOn", listOf(), listOf())
-        val kernel = DocumentObservation(listOf(shared, kernelOnly), mapOf("Total" to "VALUE|1700"), listOf(), listOf())
+        val kernel = DocumentObservation(listOf(shared, kernelOnly), mapOf("Total" to "VALUE|1700"), listOf(), listOf(), listOf())
         val interpreter = kernel.copy(messages = listOf(shared), outcomes = mapOf("Total" to "VALUE|1500"))
         assertEquals(RowVerdict.Agree("r", Call.FULL, messages = 2, outcomes = 1, operandErrors = 0),
             ProbeRequestDifferential.verdict("r", kernel, kernel))

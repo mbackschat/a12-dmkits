@@ -43,14 +43,10 @@ class InterpreterModelElementParityTest {
         modeled("IRule.getErrorCode", "RuleDef.errorCode");
         modeled("IRule.getSeverityType", "RuleDef.severity — Severity{ERROR,WARNING,INFO} incl. INFO (IF23)");
         outOfScope("IRule.getAnnotations", "editor metadata (descriptions/annotations via the `meta` verb) — not eval-relevant");
-        outOfScope("IRule.getCustomRefErrorEntitiesIfFilled",
-                "modeler-defined error-entity refinement (which field(s) a rule BLAMES by filled-state; ATTRIBUTION only, "
-                        + "not fire/no-fire) — UNWIRED in kernel 30.8.1: the md-model rule mapping returns empty pending "
-                        + "A12K-2281/2361, every rule impl returns empty, and RuleParser short-circuits when both are empty "
-                        + "(always). So the kernel always uses its default error-entity attribution, which the interpreter "
-                        + "matches (parity by construction; CustomConditionDiffTest locks the error field). KERNEL-FINDINGS "
-                        + "'getCustomRefErrorEntities… UNWIRED'.");
-        outOfScope("IRule.getCustomRefErrorEntitiesIfNotFilled", "the not-filled branch of the same UNWIRED custom-ref error-entity refinement.");
+        modeled("IRule.getCustomRefErrorEntitiesIfFilled",
+                "RuleDef.possibleCauses.ifFilled — which referenced entities a fired message may name as filled causes "
+                        + "in groupsOfPossiblyCausingEntities (KERNEL-FINDINGS KF683)");
+        modeled("IRule.getCustomRefErrorEntitiesIfNotFilled", "RuleDef.possibleCauses.ifNotFilled — the unfilled side of the same filter");
 
         // ── ICalculationInfo (the computation model) ──
         modeled("ICalculationInfo.getCalculatedField", "ComputationDef.targetPath");

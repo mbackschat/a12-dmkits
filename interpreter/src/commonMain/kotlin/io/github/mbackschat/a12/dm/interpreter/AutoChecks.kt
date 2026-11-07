@@ -327,7 +327,7 @@ internal class AutoChecks(
         type: MsgType,
         text: String,
     ): Message = Message(code, rulePath, pointer, Severity.ERROR, type, text, listOf(pointer),
-        if (type == MsgType.OMISSION) listOf(pointer) else emptyList())
+        if (type == MsgType.OMISSION) listOf(pointer) else emptyList(), ownCellGroups(pointer))
 
     private fun mandatoryMessage(
         doc: Document,
