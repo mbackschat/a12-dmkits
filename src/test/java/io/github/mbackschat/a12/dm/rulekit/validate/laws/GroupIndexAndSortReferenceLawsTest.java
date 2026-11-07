@@ -164,6 +164,8 @@ class GroupIndexAndSortReferenceLawsTest {
         actual.put("a space-padded order", orderedBy("\" ASC\""));
         actual.put("a tab-padded order", orderedBy("\"\\tDESC\""));
         actual.put("an em-space-padded order", orderedBy("\"ASC\u2003\""));
+        actual.put("a trailing-space-padded order", orderedBy("\"ASC \""));
+        actual.put("a line-break-padded order", orderedBy("\"DESC\\n\""));
         actual.put("an ordinal", orderedBy("1"));
         actual.put("a negative zero ordinal", orderedBy("-0"));
         actual.put("an ordinal past the constants", orderedBy("2"));
@@ -193,6 +195,8 @@ class GroupIndexAndSortReferenceLawsTest {
         expected.put("a space-padded order", KernelLaws.ADMITTED);
         expected.put("a tab-padded order", KernelLaws.ADMITTED);
         expected.put("an em-space-padded order", KernelLaws.UNREADABLE);
+        expected.put("a trailing-space-padded order", KernelLaws.ADMITTED);
+        expected.put("a line-break-padded order", KernelLaws.ADMITTED);
         // An integer binds as an ordinal of the two constants, and so does its canonical text, padding trimmed.
         expected.put("an ordinal", KernelLaws.ADMITTED);
         expected.put("a negative zero ordinal", KernelLaws.ADMITTED);

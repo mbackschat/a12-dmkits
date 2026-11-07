@@ -16955,13 +16955,13 @@ Kernel 31.3.1 deserializes a sort entry through Lombok's `SortFieldBuilder`, who
 | input | A12 (31.3.1) | 31.1.1 |
 |---|---|---|
 | no `order`, `order` `null`; no `name`, `name` `null`, an object or a list; an entry that is no object | unreadable ("order is marked non-null but is null") | `order` not required; a nameless entry left no model |
-| `order` `"asc"`, `"UP"`, `""`, `"ASC "`, `"01"`, `2`, `-1`, `1.0`, `true` | unreadable | not measured |
-| `order` `" ASC"`, `"\tDESC"`, `1`, `-0`, `"1"`, `" 1"` | admitted | not measured |
+| `order` `"asc"`, `"UP"`, `""`, `"ASC"` followed by an em space (U+2003), `"01"`, `2`, `-1`, `1.0`, `true` | unreadable | not measured |
+| `order` `" ASC"`, `"\tDESC"`, `"ASC "`, `"DESC\n"`, `1`, `-0`, `"1"`, `" 1"` | admitted | not measured |
 | sort name `""` with an order | `MVK_INVALID_SORT_FIELD` for the group's own name, and "The name of one of the sort fields is not set properly." (`RK_SORT_FIELD_EMPTY`) | no model |
 | index `..`, or index `Items` written in `/Order` | `MVK_INVALID_INDEX_FIELD` | no model ("Group cannot be cast to Field") |
 | sort `Items` written in the non-repeatable `/Order` | `MVK_INVALID_SORT_FIELD` and `MVK_INVALID_SORTINFO` | no model |
 
-So the order binds as Jackson binds an enum: after Java's `trim` (a tab goes, an em space stays), by the exact constant name or the canonical text of an ordinal, or as an integer ordinal. A12's serializer writes `0`, `-0` and `"0"` back as `ASC` and `1` and `" 1"` as `DESC` (`adapter.SortOrderBindingTest`). A blank name still draws `MVK_SORT_INFO_MISSING` with the order present, so that class answers the unfilled name.
+So the order binds as Jackson binds an enum: after Java's `trim` at both ends (a tab, a space or a line break goes, an em space stays; *corrected 2026-11-07:* the trailing-space and line-break rows were added after a reader took the em-space row for a plain trailing space), by the exact constant name or the canonical text of an ordinal, or as an integer ordinal. A12's serializer writes `0`, `-0` and `"0"` back as `ASC` and `1` and `" 1"` as `DESC` (`adapter.SortOrderBindingTest`). A blank name still draws `MVK_SORT_INFO_MISSING` with the order present, so that class answers the unfilled name.
 
 *Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest` for A12's column; `adapter.SortOrderBindingTest` for which constant an admitted spelling names; `adapter.laws.CheckerOrderingNameSentenceAgreementTest` for the portable checker, row by row; `predicates.SortOrderBindingPredicatesTest` for the shared binding the checker and the Java readers use; `modelkit.SortFieldBindingTest` for both modelkit readers and the record that refuses a missing member; `cli.ModelInputFailureTest` for the CLI's unreadable-input refusal.
 
