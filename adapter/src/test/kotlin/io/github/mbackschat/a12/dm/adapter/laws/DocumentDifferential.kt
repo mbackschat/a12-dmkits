@@ -83,8 +83,7 @@ internal data class DocumentObservation(
      */
     val authoredTexts: List<String>,
     /** `code address [[group], …]` of every message: A12's `groupsOfPossiblyCausingEntities`, each group as the sorted
-     *  set of its pointer keys (KERNEL-FINDINGS KF683). A set, because A12 may name one unknown row once per key that
-     *  missed it, which the interpreter's pointer cannot yet tell apart (INTERPRETER-GAPS IG188). */
+     *  pointer keys of its members, a member at the unknown row with the key it missed (KERNEL-FINDINGS KF683). */
     val causes: List<String>,
     /** The same groups on the computation's formal errors in operands, which A12 reports as messages too. */
     val operandCauses: List<String>,
@@ -196,8 +195,8 @@ internal object DocumentDifferential {
             }.toSortedMap(),
             computation.formalErrorsInOperands().map(::kernelSignature).sorted(),
             authoredTexts(authoredCodes(model), messages.map { Triple(it.errorCode, pointer(it.errorFieldPointer), it.errorText) }),
-            messages.map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
-            computation.formalErrorsInOperands().map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
+            messages.map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::causeMember) }) }.sorted(),
+            computation.formalErrorsInOperands().map { causes(it.errorCode, pointer(it.errorFieldPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::causeMember) }) }.sorted(),
         )
     }
 
@@ -237,14 +236,12 @@ internal object DocumentDifferential {
         }.sorted()
         return DocumentObservation(messages, outcomes, operandErrors,
             authoredTexts(authoredCodes(model), report.messages.map { Triple(it.code, pointer(it.errorPointer), it.text) }),
-            report.messages.map { causes(it.code, pointer(it.errorPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::pointer) }) }.sorted(),
-            operandFindings.map { causes(it.code, pointer(it.errorPath), it.possiblyCausing.map { group -> group.map(::pointer) }) }.sorted())
+            report.messages.map { causes(it.code, pointer(it.errorPointer), it.groupsOfPossiblyCausingEntities.map { group -> group.map(::causeMember) }) }.sorted(),
+            operandFindings.map { causes(it.code, pointer(it.errorPath), it.possiblyCausing.map { group -> group.map(::causeMember) }) }.sorted())
     }
 
-    // Each group is a set on both sides, so its pointer strings can coincide only where A12's pointer equality reads
-    // more than the coordinates: a missed key, which the interpreter's pointer does not carry (INTERPRETER-GAPS IG188).
     private fun causes(code: String, address: String, groups: List<List<String>>): String =
-        "$code $address ${groups.map { it.toSortedSet().toList() }}"
+        "$code $address ${groups.map { it.sorted() }}"
 
     /** Asserts that static Java and the interpreter each observe every Document as dynamic Groovy does. */
     fun assertAgree(model: String, documents: Map<String, String>, clock: DifferentialClock? = null) {
@@ -277,6 +274,17 @@ internal object DocumentDifferential {
     internal fun pointer(p: PartiallyKnownDocumentMultiPointer): String = pointerComparisonKey(p.fullName(), p.repetitionIndexes())
 
     internal fun pointer(p: A12PartiallyKnownMultiPointer): String = pointerComparisonKey(p.fullName, p.repetitionIndexes)
+
+    /**
+     * A cause member's key: its pointer, and the missed key's type and value, which A12's equality reads too. A
+     * date key is left out, because the interpreter does not carry one yet (INTERPRETER-GAPS IG188).
+     */
+    private fun causeMember(p: PartiallyKnownDocumentMultiPointer): String =
+        pointer(p) + p.semanticIndexValueForUnknownIndexGroup().filter { it !is java.util.Date }
+            .map { " ${it::class.simpleName}:$it" }.orElse("")
+
+    private fun causeMember(p: A12PartiallyKnownMultiPointer): String =
+        pointer(p) + (p.semanticIndexValueForUnknownIndexGroup?.let { " ${it::class.simpleName}:$it" } ?: "")
 
     private fun kernelSignature(m: IMessage): MessageSignature = MessageSignature(m.errorCode, m.messageType.name,
         pointer(m.errorFieldPointer), m.referencedFieldsPointers.map(::pointer).sorted(),

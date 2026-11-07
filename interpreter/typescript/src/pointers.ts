@@ -52,6 +52,14 @@ export interface A12PartiallyKnownMultiPointer {
   /** `fullName()` — each name with a leading slash, so the root pointer is `"/"`. */
   readonly fullName: string;
   readonly repetitionIndexes: readonly number[];
+  /**
+   * `semanticIndexValueForUnknownIndexGroup()` — on a possibly-causing entity at the
+   * {@link A12PartiallyKnownMultiPointer.UNKNOWN} row, the key its semantic index found no row for, as A12's own
+   * TypeScript runtime types it: the text of a text or enumeration key, a number for a number key. Absent on every
+   * other pointer. Each missed key is its own entity, told apart by its text, so `7` and `7.0` are two entities
+   * that both read `7` here.
+   */
+  readonly semanticIndexValueForUnknownIndexGroup?: string | number;
 }
 
 const rejected = (message: string | null | undefined): TypeError =>
@@ -95,11 +103,15 @@ const frozenExact = (parsed: {
 export const frozenPartiallyKnown = (parsed: {
   readonly fullName: string;
   readonly repetitionIndexes: readonly number[];
-}): A12PartiallyKnownMultiPointer =>
-  Object.freeze({
+  readonly semanticIndexValueForUnknownIndexGroup?: unknown;
+}): A12PartiallyKnownMultiPointer => {
+  const key = parsed.semanticIndexValueForUnknownIndexGroup;
+  return Object.freeze({
     fullName: parsed.fullName,
     repetitionIndexes: Object.freeze([...parsed.repetitionIndexes]),
+    ...(key === null || key === undefined ? {} : {semanticIndexValueForUnknownIndexGroup: key}),
   }) as unknown as A12PartiallyKnownMultiPointer;
+};
 
 /**
  * A12's canonical **exact** `DocumentPointer` string — parts joined by `/`, each part optionally followed by

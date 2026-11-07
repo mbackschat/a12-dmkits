@@ -1,5 +1,6 @@
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.UnknownIndexKey
 import io.github.mbackschat.a12.dm.interpreter.ValidationFinding
 import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.ValidationSeverity
@@ -71,5 +72,15 @@ class TypeScriptBridgeFindingTest {
         const val ITEMS = "/Order/Items"
         const val SKU = "/Order/Items/Sku"
         const val COUNT = "/Order/Items/Count"
+    }
+
+    /** A missed key crosses as A12's TypeScript runtime types it: the text, or a number (KERNEL-FINDINGS KF683). */
+    @Test
+    fun aMissedKeyCrossesAsTextOrNumber() {
+        val missed = A12PartiallyKnownMultiPointer.of("/Portfolio/Fees/Rate", listOf(1, A12PartiallyKnownMultiPointer.UNKNOWN, 1))
+
+        assertEquals<Any?>("A", bridgePartiallyKnown(missed.withUnknownIndexKey(UnknownIndexKey.Text("A"))).semanticIndexValueForUnknownIndexGroup)
+        assertEquals<Any?>(8.5, bridgePartiallyKnown(missed.withUnknownIndexKey(UnknownIndexKey.Decimal("8.50"))).semanticIndexValueForUnknownIndexGroup)
+        assertEquals<Any?>(null, bridgePartiallyKnown(missed).semanticIndexValueForUnknownIndexGroup)
     }
 }

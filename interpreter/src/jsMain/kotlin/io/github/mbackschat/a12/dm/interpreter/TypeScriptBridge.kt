@@ -1,6 +1,5 @@
 @file:OptIn(ExperimentalJsExport::class)
 
-import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer as CorePartiallyKnown
 import io.github.mbackschat.a12.dm.interpreter.A12Pointer as CoreA12Pointer
 import io.github.mbackschat.a12.dm.interpreter.A12PointerFormat as CoreA12PointerFormat
 import io.github.mbackschat.a12.dm.interpreter.ComputationOutcome as CoreComputationOutcome
@@ -134,13 +133,6 @@ class InterpreterBridgePathPart internal constructor(
     val repetitionIndex: Int,
 )
 
-/** One parsed message pointer — A12's `PartiallyKnownDocumentMultiPointer` shape, `fullName` plus indexes. */
-@JsExport
-class InterpreterBridgeParsedPartiallyKnownPointer internal constructor(
-    val fullName: String,
-    val repetitionIndexes: Array<Int>,
-)
-
 @JsExport
 class InterpreterBridgePointerFormatResult internal constructor(
     val value: String?,
@@ -150,12 +142,6 @@ class InterpreterBridgePointerFormatResult internal constructor(
 @JsExport
 class InterpreterBridgePointerParseResult internal constructor(
     val value: InterpreterBridgeParsedPointer?,
-    val rejection: String?,
-)
-
-@JsExport
-class InterpreterBridgePartiallyKnownPointerResult internal constructor(
-    val value: InterpreterBridgeParsedPartiallyKnownPointer?,
     val rejection: String?,
 )
 
@@ -618,7 +604,7 @@ fun interpreterBridgeLoadExpandedJson(source: String): InterpreterBridgePrepared
  * behaviour does not depend on how Kotlin/JS lowers `Int` arithmetic (`%`, `|0`, truncating conversions), and it
  * rejects a value outside the 32-bit range for free. `TypeScriptBridgePointerFormatTest` measures each case.
  */
-private fun Array<Int>.asPortableIntegers(): List<Int> = map { value ->
+internal fun Array<Int>.asPortableIntegers(): List<Int> = map { value ->
     require(value.toString().toIntOrNull() == value) {
         "each repetition index must be a 32-bit integer, but got '$value'"
     }
@@ -655,7 +641,7 @@ fun interpreterBridgeParseA12Pointer(pointer: String): InterpreterBridgePointerP
         InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
     }
 
-private fun bridgePointer(parsed: CoreA12Pointer) = InterpreterBridgeParsedPointer(
+internal fun bridgePointer(parsed: CoreA12Pointer) = InterpreterBridgeParsedPointer(
     parsed.pathParts.map { InterpreterBridgePathPart(it.name, it.repetitionIndex) }.toTypedArray(),
     parsed.fullName,
     parsed.repetitionIndexes.toTypedArray(),
@@ -664,60 +650,6 @@ private fun bridgePointer(parsed: CoreA12Pointer) = InterpreterBridgeParsedPoint
 /** A12's `RepetitionsV2` slot repetition, legal only on an exact pointer's last part. */
 @JsExport
 fun interpreterBridgeA12LastPartZero(): Int = CoreA12PointerFormat.LAST_PART_ZERO
-
-/**
- * Builds a **message** pointer — `PartiallyKnownDocumentMultiPointer.of(fullName, repetitions)`.
- *
- * There is deliberately no `format`/`parse` beside it: A12 defines no pointer string for this type, so the
- * bridge carries the owner's value and the owner's operations only.
- */
-@JsExport
-fun interpreterBridgeA12PartiallyKnownOf(
-    fullName: String,
-    repetitions: Array<Int>,
-): InterpreterBridgePartiallyKnownPointerResult =
-    try {
-        val built = CorePartiallyKnown.of(fullName, repetitions.asPortableIntegers())
-        InterpreterBridgePartiallyKnownPointerResult(bridgePartiallyKnown(built), null)
-    } catch (rejected: IllegalArgumentException) {
-        InterpreterBridgePartiallyKnownPointerResult(null, rejected.message.orEmpty())
-    }
-
-/** The one crossing of a message pointer, so a built one and a finding's one cannot take different shapes. */
-internal fun bridgePartiallyKnown(pointer: CorePartiallyKnown) = InterpreterBridgeParsedPartiallyKnownPointer(
-    pointer.fullName,
-    pointer.repetitionIndexes.toTypedArray(),
-)
-
-/**
- * `PartiallyKnownDocumentMultiPointer.toDocumentPointer()` — the exact pointer when the message pointer is one,
- * and a `null` [InterpreterBridgePointerParseResult.value] with no rejection when it legitimately is not.
- *
- * The ROOT raises rather than answering, which is the owner's measured behaviour, so it arrives as a rejection.
- */
-@JsExport
-fun interpreterBridgeA12PartiallyKnownPointerToExact(
-    fullName: String,
-    repetitions: Array<Int>,
-): InterpreterBridgePointerParseResult =
-    try {
-        val exact = CorePartiallyKnown.of(fullName, repetitions.asPortableIntegers()).toExactPointer()
-        InterpreterBridgePointerParseResult(exact?.let(::bridgePointer), null)
-    } catch (rejected: IllegalArgumentException) {
-        InterpreterBridgePointerParseResult(null, rejected.message.orEmpty())
-    }
-
-/** `DocumentMultiPointer.WILDCARD` — all repetitions of a level, legal at any part of a message pointer. */
-@JsExport
-fun interpreterBridgeA12PartiallyKnownWildcard(): Int = CorePartiallyKnown.WILDCARD
-
-/** `PartiallyKnownDocumentMultiPointer.UNKNOWN` (`IIdentifier.UNKNOWN`) — a level that resolved to no row. */
-@JsExport
-fun interpreterBridgeA12PartiallyKnownUnknown(): Int = CorePartiallyKnown.UNKNOWN
-
-/** `IIdentifier.PARALLEL_ITERATION` — a parallel level A12's runtime can leave on a message pointer's references. */
-@JsExport
-fun interpreterBridgeA12PartiallyKnownParallelIteration(): Int = CorePartiallyKnown.PARALLEL_ITERATION
 
 private fun interpreterConfiguration(
     customFieldTypes: Array<InterpreterBridgeCustomFieldTypeRegistration>,

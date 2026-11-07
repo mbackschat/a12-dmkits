@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
@@ -25,6 +26,43 @@ internal class MessagePointers(private val model: ModelDef, private val paths: M
                 pass.doc.messagePointer(reference.path, repetitions)
             }
         }
+
+    /**
+     * A possibly-causing entity's pointer: [of], and at a row no key matched, that key as A12 keeps it on a cause
+     * member — converted to the index field's basic type, absent for an empty key (KERNEL-FINDINGS KF683,
+     * `adapter.laws.UnknownIndexKeyLawsTest`). The key is a selected reference's own key, or on a joined row the
+     * value the join iterates, which the side without that row lacks. A date index's key, a `Date` in A12, and a
+     * custom-typed one are not carried (INTERPRETER-GAPS IG188).
+     */
+    fun causeOf(reference: MessageReference, pass: ValidationPass, ctx: EvalContext): A12PartiallyKnownMultiPointer {
+        val pointer = of(reference, pass, ctx)
+        if (A12PartiallyKnownMultiPointer.UNKNOWN !in pointer.repetitionIndexes) return pointer
+        val (indexField, text) = when (reference) {
+            is MessageReference.Selected -> {
+                val text = when (val key = reference.key) {
+                    is SelectedKey.Literal -> key.value
+                    // A12 keeps a selection's key as stored, so `8.50` keeps the scale its evaluation value `8.5` drops.
+                    is SelectedKey.Field -> if (pass.readsAsKey(ctx, key.path)) ctx.messageDisplayValue(key.path) else null
+                } ?: return pointer
+                checkNotNull(reference.indexField) { "a selected reference is expanded before it is resolved" } to text
+            }
+            // On a joined row, the level no row matched is the side's group, and its key is the joined value.
+            else -> {
+                val level = pointer.repetitionIndexes.indexOf(A12PartiallyKnownMultiPointer.UNKNOWN)
+                val group = pointer.fullName.split('/').take(level + 2).joinToString("/")
+                val indexField = model.indexFields.firstOrNull { it.substringBeforeLast('/') == group } ?: return pointer
+                indexField to (pass.doc.messageIndexValue(indexField, ctx) ?: return pointer)
+            }
+        }
+        if (text.isEmpty()) return pointer
+        val key = when {
+            indexField in model.customTypes -> null
+            model.kinds[indexField] == Kind.STRING -> UnknownIndexKey.Text(text)
+            model.kinds[indexField] == Kind.NUMBER -> A12DocumentJson.canonicalNumberOrNull(text)?.let(UnknownIndexKey::Decimal)
+            else -> null
+        } ?: return pointer
+        return pointer.withUnknownIndexKey(key)
+    }
 
     /**
      * The coordinates of the row a selected reference's key selects, or null when the key is empty or no admitted

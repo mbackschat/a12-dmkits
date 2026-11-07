@@ -26163,7 +26163,7 @@
       }
     },
     "kf683": {
-      "sha256": "4d3c66c6575b9c448e53b63303af08b201d8a0cf5eaa7ac899bb191e1ebd6ccc",
+      "sha256": "c3d7ef72e19ff523b6af59d2e83eb5e65eec54c71efedf3f26b17348950e118b",
       "task": "K313",
       "scope": {
         "dmkits": [],
@@ -26171,13 +26171,16 @@
         "json-schema-import": [],
         "json-schema-export": [],
         "adapter": [
-          "possibly-causing entity groups"
+          "possibly-causing entity groups",
+          "missed index keys"
         ],
         "interpreter": [
-          "possibly-causing entity groups"
+          "possibly-causing entity groups",
+          "missed index keys"
         ],
         "dmtool-cli": [
-          "possibly-causing entity groups"
+          "possibly-causing entity groups",
+          "missed index keys"
         ],
         "a12-kernel-lean": []
       },
@@ -26209,6 +26212,10 @@
             "possibly-causing entity groups": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PossiblyCausingEntitiesLawsTest.kt#aMissedKeyIsNamedOncePerKey",
               "witness": "The kernel's groups are read off IMessage with their typed missed-key members, and compared with the interpreter's."
+            },
+            "missed index keys": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/JoinedRowFillScopeDiffTest.kt#allThreeEnginesAgreeOnEveryDocument",
+              "witness": "The keyed causes channel of assertAgree compares the order without stock's members, keyed String C, across all three engines; a date key is left out until IG188 closes."
             }
           }
         },
@@ -26219,6 +26226,10 @@
             "possibly-causing entity groups": {
               "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/PossiblyCausingEntitiesLawsTest.kt#anOmissionNamesTheEmptyEntitiesFirstAndTheFilledOnesSecond",
               "witness": "The interpreter's groups equal the kernel's on every row of the grid, and the causes channel of every assertAgree differential agrees across the adapter lane."
+            },
+            "missed index keys": {
+              "reference": "adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/UnknownIndexKeyLawsTest.kt#aMissedKeyIsKeptOnTheCauseMemberAsItsIndexFieldTypesIt",
+              "witness": "Selected and joined text, number and enumeration keys equal both kernel strategies' on nine rows, scale included; date and custom-typed keys are IG188."
             }
           }
         },
@@ -26229,6 +26240,10 @@
             "possibly-causing entity groups": {
               "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/rule/MessagePossiblyCausingCliTest.java#anOmissionNamesTheEmptyEntityFirstAndTheGivenOneSecond",
               "witness": "An omission publishes the empty DeliveryDate first and the given OrderDate second; a value error publishes both in one group."
+            },
+            "missed index keys": {
+              "reference": "cli/src/test/java/io/github/mbackschat/a12/dm/cli/rule/MessagePossiblyCausingCliTest.java#twoMissedKeysNameTheirAddressOnce",
+              "witness": "Two keys missing one row publish its address once per group, as the kernel leg does."
             }
           }
         },

@@ -15,6 +15,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 ### Added
 
 - **`SumOfTerms` evaluates,** including counts and aggregates inside a term, read as A12 reads them.
+- **A possibly-causing entity at a row no key selected or joined carries that key** as `semanticIndexValueForUnknownIndexGroup`, as A12's pointer does: the text of a text or enumeration key, and for a number key a `BigDecimal` on the JVM and a number in JavaScript and TypeScript. Two keys that miss one row are two entities. Date and custom-typed keys are not carried yet.
 
 ### Fixed
 

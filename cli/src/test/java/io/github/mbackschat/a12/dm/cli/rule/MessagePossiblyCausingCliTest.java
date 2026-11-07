@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * A firing publishes A12's groups of possibly-causing entities as {@code possiblyCausing}, on both the
@@ -71,6 +74,43 @@ class MessagePossiblyCausingCliTest {
         assertEquals(List.of(Set.of("Order/DeliveryDate", "Order/OrderDate")), groups(message), message::toString);
         assertEquals(groups(message(data(CliTestSupport.runKernel(args)), "DELIVERY_BEFORE_ORDER")), groups(message),
                 "interpreter vs kernel");
+    }
+
+    /**
+     * Two keys that select no row are two members of A12's group, equal but for the missed key the address does not
+     * render ({@code adapter.laws.UnknownIndexKeyLawsTest}); the published group is a set of addresses, so each is
+     * named once, as the kernel leg names it.
+     */
+    @Test
+    void twoMissedKeysNameTheirAddressOnce(@TempDir Path dir) throws Exception {
+        var session = EditSession.read(DocumentModelDraft.named("portfolio").locale("en_US")
+                .rootGroup("Portfolio", p -> p.stringField("Owner", f -> { }).stringField("Wanted", f -> { })
+                        .group("Claims", c -> c.repeatable(3).indexField("Code").stringField("Code", f -> { })
+                                .numberField("Cost", f -> { })))
+                .build().toJson());
+        var portfolio = session.group("/Portfolio");
+        var owner = portfolio.str("Owner");
+        var cost = portfolio.num("Claims/Cost");
+        portfolio.addRule(r -> r.name("Misses").code("MISSES").errorField(owner)
+                .when(cost.forIndex("A").gt(1).or(cost.forIndex(portfolio.str("Wanted").field()).gt(1)).or(owner.notFilled()))
+                .message(Dsl.en("The portfolio needs an owner.")).build());
+        Path model = dir.resolve("portfolio.dm.json");
+        Files.writeString(model, session.toJson());
+        Path instance = instance(dir, "{ \"Portfolio\": { \"Wanted\": \"B\" } }");
+        String[] args = {"-m", model.toString(), "model", "eval", "--instance", instance.toString()};
+
+        JsonNode message = message(data(CliTestSupport.run(args)), "MISSES");
+        message.path("possiblyCausing").forEach(group ->
+                assertEquals(new TreeSet<>(texts(group)).size(), group.size(), message::toString));
+        assertEquals(true, groups(message).get(0).stream().anyMatch(address -> address.contains("Claims")), message::toString);
+        assertEquals(groups(message(data(CliTestSupport.runKernel(args)), "MISSES")), groups(message),
+                "interpreter vs kernel");
+    }
+
+    private static List<String> texts(JsonNode group) {
+        List<String> texts = new java.util.ArrayList<>();
+        group.forEach(address -> texts.add(address.asText()));
+        return texts;
     }
 
     private static JsonNode message(JsonNode data, String code) {

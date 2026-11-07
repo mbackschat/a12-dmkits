@@ -568,7 +568,12 @@ public final class InterpreterEngine {
             putPointers(node.putArray("fillToFix"), m.getFillToFixPointers());
         }
         ArrayNode causes = node.putArray("possiblyCausing");
-        m.getGroupsOfPossiblyCausingEntities().forEach(group -> putPointers(causes.addArray(), group));
+        // Members that differ only by a missed key render as one address, and a published group is a set of
+        // addresses, so each is named once (KERNEL-FINDINGS KF683).
+        m.getGroupsOfPossiblyCausingEntities().forEach(group -> {
+            ArrayNode addresses = causes.addArray();
+            A12Pointers.canonical(group).stream().distinct().forEach(addresses::add);
+        });
         return node;
     }
 

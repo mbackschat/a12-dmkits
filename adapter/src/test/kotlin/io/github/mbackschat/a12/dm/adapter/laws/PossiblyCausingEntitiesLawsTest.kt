@@ -230,9 +230,8 @@ class PossiblyCausingEntitiesLawsTest {
     /**
      * Two keys that select no row each name the unknown row, and A12 keeps both: its pointer carries the key that
      * missed (`semanticIndexValueForUnknownIndexGroup`), typed as the index field is — text for a string index, a
-     * `BigDecimal` for a number one — so the two are different members of one group. The interpreter's pointer has
-     * no such member, so it names each entity once (INTERPRETER-GAPS IG188); the `causes` channel of every
-     * differential compares pointer keys, which both sides then agree on.
+     * `BigDecimal` for a number one — so the two are different members of one group. Here the interpreter's groups
+     * are read as address sets; `UnknownIndexKeyLawsTest` holds it to each key.
      */
     @Test
     fun aMissedKeyIsNamedOncePerKey() {

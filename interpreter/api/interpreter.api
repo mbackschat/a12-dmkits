@@ -6,6 +6,7 @@ public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMult
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFullName ()Ljava/lang/String;
 	public final fun getRepetitionIndexes ()Ljava/util/List;
+	public final fun getSemanticIndexValueForUnknownIndexGroup ()Ljava/lang/Object;
 	public fun hashCode ()I
 	public final fun toExactPointer ()Lio/github/mbackschat/a12/dm/interpreter/A12Pointer;
 	public fun toString ()Ljava/lang/String;

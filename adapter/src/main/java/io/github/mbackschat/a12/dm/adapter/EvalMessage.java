@@ -29,7 +29,7 @@ import java.util.Set;
  *                    ({@code getRefOmissionErrorResponsiblePointers}); empty for a VALUE error
  * @param possiblyCausing the groups of possibly-causing entities ({@code getGroupsOfPossiblyCausingEntities},
  *                    KERNEL-FINDINGS KF683); a {@link FieldPointer} carries no missed key, so two members that
- *                    differ only by theirs read as one, as the interpreter's do (INTERPRETER-GAPS IG188)
+ *                    differ only by theirs read as one, as dmtool's published addresses do
  */
 public record EvalMessage(String errorCode, Optional<String> rulePath, FieldPointer field,
         String severity, String messageType, String message,

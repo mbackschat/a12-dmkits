@@ -54,10 +54,32 @@ class A12PartiallyKnownMultiPointer private constructor(
     /** `fullName()` — every name with a leading slash, so a root pointer is `"/"` and never `""`. */
     val fullName: String,
     indexes: List<Int>,
+    private val unknownIndexKey: UnknownIndexKey? = null,
 ) {
 
     /** `repetitionIndexes()`. Immutable and independent of the caller's list. */
     val repetitionIndexes: List<Int> = immutableListSnapshot(indexes)
+
+    /**
+     * `semanticIndexValueForUnknownIndexGroup()` — on a possibly-causing entity at the [UNKNOWN] row, the key its
+     * semantic index found no row for: a `String` for a text or enumeration index, and for a number index a
+     * `BigDecimal` on the JVM or a number in JavaScript. Null on every other pointer, including the error,
+     * referenced and fill-to-fix pointers, which A12 leaves without one, and for a date or custom-typed index,
+     * whose key is not carried (INTERPRETER-GAPS IG188). It takes part in equality, so each missed key is its own
+     * entity and `7` and `7.0` are two (KERNEL-FINDINGS KF683).
+     */
+    val semanticIndexValueForUnknownIndexGroup: Any?
+        get() = when (val key = unknownIndexKey) {
+            null -> null
+            is UnknownIndexKey.Text -> key.value
+            is UnknownIndexKey.Decimal -> publishedIndexValue(key)
+        }
+
+    /** This pointer carrying [key], which only a pointer to the [UNKNOWN] row can carry. */
+    internal fun withUnknownIndexKey(key: UnknownIndexKey): A12PartiallyKnownMultiPointer {
+        require(UNKNOWN in repetitionIndexes) { "only a pointer to the unknown row carries a missed key: $this" }
+        return A12PartiallyKnownMultiPointer(fullName, repetitionIndexes, key)
+    }
 
     /**
      * The exact pointer this value names, when it names exactly one — A12's `toDocumentPointer()`.
@@ -106,12 +128,17 @@ class A12PartiallyKnownMultiPointer private constructor(
     override fun equals(other: Any?): Boolean =
         other is A12PartiallyKnownMultiPointer &&
             other.fullName == fullName &&
-            other.repetitionIndexes == repetitionIndexes
+            other.repetitionIndexes == repetitionIndexes &&
+            other.unknownIndexKey == unknownIndexKey
 
-    override fun hashCode(): Int = 31 * fullName.hashCode() + repetitionIndexes.hashCode()
+    override fun hashCode(): Int = (31 * fullName.hashCode() + repetitionIndexes.hashCode()) * 31 + unknownIndexKey.hashCode()
 
-    /** `PartiallyKnownDocumentMultiPointerImpl.toString` — a debug form, never a pointer string. */
-    override fun toString(): String = "A12PartiallyKnownMultiPointer[$fullName, $repetitionIndexes]"
+    /**
+     * `PartiallyKnownDocumentMultiPointerImpl.toString` — a debug form, never a pointer string. It names a missed key,
+     * which A12's leaves out, so two unequal pointers never print alike.
+     */
+    override fun toString(): String =
+        "A12PartiallyKnownMultiPointer[$fullName, $repetitionIndexes${unknownIndexKey?.let { ", $it" } ?: ""}]"
 
     companion object {
         /** `DocumentMultiPointer.WILDCARD` — all repetitions of this level. Legal at every part on this type. */

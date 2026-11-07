@@ -465,6 +465,8 @@ final class io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointe
         final fun <get-fullName>(): kotlin/String // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.fullName.<get-fullName>|<get-fullName>(){}[0]
     final val repetitionIndexes // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.repetitionIndexes|{}repetitionIndexes[0]
         final fun <get-repetitionIndexes>(): kotlin.collections/List<kotlin/Int> // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.repetitionIndexes.<get-repetitionIndexes>|<get-repetitionIndexes>(){}[0]
+    final val semanticIndexValueForUnknownIndexGroup // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.semanticIndexValueForUnknownIndexGroup|{}semanticIndexValueForUnknownIndexGroup[0]
+        final fun <get-semanticIndexValueForUnknownIndexGroup>(): kotlin/Any? // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.semanticIndexValueForUnknownIndexGroup.<get-semanticIndexValueForUnknownIndexGroup>|<get-semanticIndexValueForUnknownIndexGroup>(){}[0]
 
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.interpreter/A12PartiallyKnownMultiPointer.hashCode|hashCode(){}[0]
