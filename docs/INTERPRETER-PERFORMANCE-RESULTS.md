@@ -21,6 +21,19 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+<a id="checkpoint-2026-11-07-kernel-31-3-footprint"></a>
+### Checkpoint 2026-11-07 — kernel 31.3.1 leaves both kernel footprints unchanged; the interpreter's cause candidates cost up to 34.5 kB per prepared model
+
+`EngineFootprintReportTest` through its documented `-PrunKernelProbe` command on clean `60801e67a` (Apple M1, JDK 21.0.13, A12 Kernel 31.3.1), `hold=12`. One-minute load was 19.6, from another project's test suite and Spotlight; a retained-byte figure is not a clock, and the two kernel arms below agree with 2026-11-06 per model within 1 %.
+
+| | 2026-11-06 (Kernel 31.1.1) | **2026-11-07 (Kernel 31.3.1)** |
+|---|---|---|
+| Interpreter, prepared model (warm) | 48.8 kB–354.9 kB | **53.0 kB–397.8 kB** |
+| Generated Java | 352.6 kB–1.59 MB, 4.3×–7.4× more | **354.1 kB–1.60 MB, 4.0×–8.2× more** |
+| Dynamic Groovy | 1.05 MB–12.08 MB, 18.6×–34.0× more | **1.06 MB–12.09 MB, 19.0×–30.4× more** |
+
+**The interpreter's growth is the possibly-causing candidates ([KF683](KERNEL-FINDINGS.md#kf683)), measured with a within-model control.** The same run with only `PreparedRulePlan.causingEntities` replaced by empty lists lowers the warm heap by 34.5 kB on `many-rules-192` (386 019 → 351 556 B, ≈180 B per rule), 15.4 kB on the real-model shape and 8.5 kB on `many-rules-48`, and leaves the rule-free `typedefs` unchanged. The candidates are prepared once per rule because A12 fixes them per rule at code generation. The `java histogram` probe was not re-run, because neither kernel total moved.
+
 <a id="checkpoint-2026-11-06-first-answer-regression"></a>
 ### Checkpoint 2026-11-06 — the browser first answer regressed against 0.13.0 through per-document work, not the browser
 
