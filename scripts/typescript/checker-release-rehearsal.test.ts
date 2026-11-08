@@ -28,19 +28,24 @@ if(args[0]==='api') {
  }
  else if(endpoint===repo+'/pages') json({build_type:'workflow'});
  else if(endpoint===repo) { if(!state.repo)notFound(); json({name:'a12-consistency-releases'}); }
- else if(endpoint===repo+'/releases?per_page=100') json([state.release ? [state.release] : []]);
+ else if(endpoint===repo+'/releases?per_page=100') {
+  // GitHub's authenticated release listing lags writes: a fresh draft, or a fresh asset, can be absent for a moment.
+  if(state.hidden>0){state.hidden--;save();json([[]]);}
+  else if(state.assetHidden>0){state.assetHidden--;save();json([[{...state.release,assets:state.release.assets.slice(0,-1)}]]);}
+  else json([state.release ? [state.release] : []]);
+ }
  else if(endpoint.includes('/releases/tags/')) notFound();
  else if(endpoint.includes('/releases/assets/')) process.stdout.write(fs.readFileSync(path.join(home,'asset-'+endpoint.split('/').at(-1))));
  else throw Error('unexpected api '+args);
 } else if(args[0]==='repo' && args[1]==='create') {
  git(['init','--bare','--initial-branch=main',path.join(home,'mirror.git')]);state.repo=true;save();
 } else if(args[0]==='repo' && args[1]==='clone') git(['clone',path.join(home,'mirror.git'),args[3]]);
-else if(args[0]==='release' && args[1]==='create') { state.release={draft:true,tag_name:args[2],assets:[]};state.notes=args[args.indexOf('--notes')+1];save(); }
+else if(args[0]==='release' && args[1]==='create') { state.release={draft:true,tag_name:args[2],assets:[]};state.notes=args[args.indexOf('--notes')+1];state.hidden=state.lagAfterCreate||0;save(); }
 else if(args[0]==='release' && args[1]==='upload') {
  const name=path.basename(args[3]);
  if(state.fail===name){process.stderr.write('injected upload failure');process.exit(1);}
  if(state.release.assets.some(a=>a.name===name))throw Error('replacement forbidden');
- const id=state.release.assets.length+1;fs.copyFileSync(args[3],path.join(home,'asset-'+id));state.release.assets.push({id,name});save();
+ const id=state.release.assets.length+1;fs.copyFileSync(args[3],path.join(home,'asset-'+id));state.release.assets.push({id,name});state.assetHidden=state.assetLag||0;save();
 } else if(args[0]==='workflow' && args[1]==='run') {
  if(state.allowedTag!==state.release.tag_name)throw Error('release tag is blocked by environment');
  if(args.at(-1)!==state.release.tag_name) throw Error('deployment must name release tag');
@@ -98,7 +103,7 @@ test('production publisher resumes uploads and go-live while refusing altered id
         writeFileSync(join(staging, 'io/github/mbackschat/a12/dm/dm-consistency/0.14.0/dm-consistency-0.14.0.jar'), 'qualified fixture');
         const receipt = { schema: 1, version: '0.14.0', source, files: fileInventory(staging) };
         writeFileSync(join(root, 'build/consistency-release/qualification.json'), JSON.stringify(receipt));
-        save({ fail: 'SHA256SUMS' });
+        save({ fail: 'SHA256SUMS', lagAfterCreate: 2 });
         const publish = () => spawnSync(process.execPath, [publisher, 'stage', '0.14.0'], { cwd: root, env, encoding: 'utf8', timeout: 30_000 });
         const stale = spawnSync(process.execPath, [publisher, 'stage', '0.14.0'], { cwd: root, env: { ...env, STATISTICS_STALE: '1' }, encoding: 'utf8', timeout: 30_000 });
         assert.notEqual(stale.status, 0); assert.match(stale.stderr, /update-code-statistics/);
@@ -112,7 +117,7 @@ test('production publisher resumes uploads and go-live while refusing altered id
         assert.match(state().notes, /^### Added\n\n- \*\*First rehearsed publication\.\*\*\n\nMaven publications/);
         const first = readFileSync(join(home, 'asset-1'));
         const mirrorCommit = run(home, 'git', ['--git-dir', join(home, 'mirror.git'), 'rev-parse', 'main']);
-        save({ ...state(), fail: null });
+        save({ ...state(), fail: null, assetLag: 1 });
         result = publish(); assert.equal(result.status, 0, result.stderr);
         assert.equal(state().release.assets.length, 3);
         assert.deepEqual(readFileSync(join(home, 'asset-1')), first);

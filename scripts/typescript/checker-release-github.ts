@@ -50,6 +50,19 @@ export function getRelease(root: string, version: string): Release | undefined {
     const pages = JSON.parse(gh(root, ['api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp'])) as Release[][];
     return pages.flat().find(release => release.tag_name === `v${version}`);
 }
+/**
+ * The release once the authenticated listing shows it as just written. That listing lags writes: on 2026-11-08
+ * (checker 0.16.0) a draft created a moment earlier was absent from it and staging crashed on the missing release.
+ */
+function awaitRelease(root: string, version: string, ready: (release: Release) => boolean = () => true): Release {
+    const attempts = 10;
+    for (let attempt = 1; ; attempt++) {
+        const release = getRelease(root, version);
+        if (release && ready(release)) return release;
+        if (attempt === attempts) throw new Error(`release v${version} is still not listed as written after ${attempts} reads`);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000);
+    }
+}
 export function cloneMirror(root: string): string {
     const mirror = resolve(root, 'build/consistency-release/mirror');
     rmSync(mirror, { recursive: true, force: true });
@@ -110,10 +123,10 @@ export async function stageChecker(root: string, receipt: Receipt): Promise<void
         const notes = `${releaseNotes(readFileSync(resolve(mirror, 'CHANGELOG.md'), 'utf8'), receipt.version)}\n\nMaven publications for the checker and its predicate dependency. Usage: https://github.com/${repository}. Source: consistency-v${receipt.version} (${source}).`;
         gh(root, ['release', 'create', tag, '--repo', repository, '--verify-tag', '--draft', '--title', `A12 consistency checker ${receipt.version}`, '--notes', notes]);
     }
-    const release = getRelease(root, receipt.version)!;
+    const release = awaitRelease(root, receipt.version);
     verifyRelease(root, release, assets, true);
     for (const name of Object.keys(assets)) if (!release.assets.some(a => a.name === name)) gh(root, ['release', 'upload', tag, resolve(output, name), '--repo', repository]);
-    verifyRelease(root, getRelease(root, receipt.version)!, assets);
+    verifyRelease(root, awaitRelease(root, receipt.version, listed => Object.keys(assets).every(name => listed.assets.some(a => a.name === name))), assets);
     console.log(`Staged immutable ${tag}; ready for go-live`);
 }
 export async function deployPagesTag(root: string, tag: string, mirrorSha: string): Promise<void> {
