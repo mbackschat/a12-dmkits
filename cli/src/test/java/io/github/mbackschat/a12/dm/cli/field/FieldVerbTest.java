@@ -64,7 +64,7 @@ class FieldVerbTest {
                 "declare a second locale so a single-locale enum label is now incomplete");
         Path spec = dir.resolve("partial-labels.json");
         Files.writeString(spec, """
-                {"group":"/Doc","name":"Tier","kind":"ENUM",
+                {"group":"/Doc","name":"Tier","kind":"ENUMERATION",
                  "enum":{"values":[{"value":"BASIC","labels":{"en_US":"Basic"}}]}}""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
         assertNotEquals(70, res.code(), () -> "incomplete locale coverage must NOT be an internal error: " + res.out());
@@ -170,20 +170,6 @@ class FieldVerbTest {
     }
 
     @Test
-    void addEchoesTheCanonicalKindNotTheInputSpelling(@TempDir Path dir) throws Exception {
-        // the write echo reports the PERSISTED kind through the same resolver `field read` uses, so a
-        // non-canonical input spelling (`ENUM`) comes back as the canonical ValueKind name (`ENUMERATION`)
-        Path model = CliTestSupport.orderRuled(dir);
-        Path spec = dir.resolve("tier.json");
-        Files.writeString(spec, """
-                {"group":"/Order","name":"Tier","kind":"ENUM","enum":{"values":[{"value":"BASIC"},{"value":"PLUS"}]}}""");
-        var res = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
-        assertEquals(0, res.code(), res.err());
-        assertEquals("ENUMERATION", M.readTree(res.out()).path("changed").path("kind").asText(),
-                () -> "add echoes the canonical ValueKind name, not the input 'ENUM': " + res.out());
-    }
-
-    @Test
     void readEchoesTheFieldLabel(@TempDir Path dir) throws Exception {
         // 05-fr: a targeted `field read` must surface metadata (the label) so an agent confirms a label edit
         // without exporting the whole model — and never reading the raw model JSON.
@@ -215,7 +201,7 @@ class FieldVerbTest {
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", str.toString()).code());
         Path en = dir.resolve("enum.json");
         Files.writeString(en, """
-                {"group":"/Doc","name":"Tier","kind":"ENUM","enum":{"values":[{"value":"BASIC"},{"value":"PLUS"}]}}""");
+                {"group":"/Doc","name":"Tier","kind":"ENUMERATION","enum":{"values":[{"value":"BASIC"},{"value":"PLUS"}]}}""");
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", en.toString()).code());
 
         JsonNode age = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Age").out())
@@ -292,13 +278,13 @@ class FieldVerbTest {
         // DATERANGE: the (format, separator) PAIR is allowlisted, and TWELVE are admitted over the
         // 8x4 grid measured below; a mismatched separator is rejected
         assertEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R1","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
+                {"group":"/D","name":"R1","kind":"DATE_RANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
                 "the ISO pair yyyy-MM-dd + / is accepted");
         assertEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R2","kind":"DATERANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
+                {"group":"/D","name":"R2","kind":"DATE_RANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
                 "the German pair dd.MM.yyyy + - is accepted");
         assertNotEquals(0, addFieldRc(m, dir, """
-                {"group":"/D","name":"R3","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
+                {"group":"/D","name":"R3","kind":"DATE_RANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
                 "a mismatched separator (yyyy-MM-dd + -) is rejected");
         // …and the rest of the grid. This block is the WHOLE 8x4 denominator — eight candidate formats against
         // `/`, `-`, `.` and the empty separator — because a ragged grid reads exactly like a measured class and
@@ -315,7 +301,7 @@ class FieldVerbTest {
             for (String separator : separators) {
                 String name = "G" + probe++;
                 boolean accepted = addFieldRc(m, dir, """
-                        {"group":"/D","name":"%s","kind":"DATERANGE","dateRange":{"format":"%s","separator":"%s"}}"""
+                        {"group":"/D","name":"%s","kind":"DATE_RANGE","dateRange":{"format":"%s","separator":"%s"}}"""
                         .formatted(name, format, separator)) == 0;
                 observed.put(format + "|" + separator, accepted);
             }
@@ -339,10 +325,10 @@ class FieldVerbTest {
                 "--root", "D", "-o", de.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", de.toString(), "config", "modify", "--condition-language", "de_DE").code());
         assertEquals(0, addFieldRc(de, dir, """
-                {"group":"/D","name":"R4","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
+                {"group":"/D","name":"R4","kind":"DATE_RANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
                 "a de_DE conditionLanguage STILL accepts the ISO pair (the allowed set is locale-independent)");
         assertEquals(0, addFieldRc(de, dir, """
-                {"group":"/D","name":"R5","kind":"DATERANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
+                {"group":"/D","name":"R5","kind":"DATE_RANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
                 "a de_DE conditionLanguage accepts the German pair too");
     }
 
@@ -355,7 +341,7 @@ class FieldVerbTest {
                 "--root", "D", "-o", m.toString()).code());
         Path spec = dir.resolve("bad.json");
         Files.writeString(spec, """
-                {"group":"/D","name":"Win","kind":"DATERANGE","dateRange":{"format":"YYYY-MM-DD","separator":" - "}}""");
+                {"group":"/D","name":"Win","kind":"DATE_RANGE","dateRange":{"format":"YYYY-MM-DD","separator":" - "}}""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
         assertNotEquals(0, res.code(), "the uppercase format + spaced separator is rejected");
         String found = "";

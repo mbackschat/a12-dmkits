@@ -55,7 +55,7 @@ final class TypedefModifyCommand extends BaseCommand {
     @ParamKind(ParamKind.Kind.FIELD_KIND)
     @Option(names = "--kind", paramLabel = "<kind>",
             description = "re-type to this bare easy kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM "
-                    + "(for a rich ENUM/restricted config, pass a <spec.json> instead)")
+                    + "(for a rich ENUMERATION/restricted config, pass a <spec.json> instead)")
     FieldKind kind;
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",

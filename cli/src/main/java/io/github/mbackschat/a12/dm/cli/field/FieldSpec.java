@@ -2,13 +2,18 @@ package io.github.mbackschat.a12.dm.cli.field;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldMeta;
@@ -206,35 +211,86 @@ public final class FieldSpec {
         if (kindText == null) {
             throw new IllegalArgumentException("field '" + name + "' needs a \"kind\" (or a \"typedef\")");
         }
-        return switch (kindText.toUpperCase(Locale.ROOT)) {
-            case "STRING" -> string(spec.path("string"));
-            case "NUMBER" -> number(spec.path("number"));
-            case "ENUM", "ENUMERATION" -> enumeration(spec.path("enum"));
-            case "CUSTOM" -> custom(spec.path("custom"));
-            case "DATE" -> new FieldTypeSpec.DateSpec(text(spec.path("date"), "format"),
-                    textOr(spec.path("date"), "precision", "FULL"),
-                    retiredPre1900Check(spec.path("date")));
-            case "TIME" -> new FieldTypeSpec.TimeSpec(text(spec.path("time"), "format"));
-            case "DATETIME", "DATE_TIME" -> new FieldTypeSpec.DateTimeSpec(text(spec.path("dateTime"), "format"));
-            case "DATERANGE", "DATE_RANGE" -> new FieldTypeSpec.DateRangeSpec(
-                    req(spec.path("dateRange"), "format"), req(spec.path("dateRange"), "separator"),
+        ValueKind kind = valueKind(kindText);
+        JsonNode block = spec.path(configBlockKey(kind));
+        return switch (kind) {
+            case STRING -> string(block);
+            case NUMBER -> number(block);
+            case ENUMERATION -> enumeration(block);
+            case CUSTOM -> custom(block);
+            case DATE -> new FieldTypeSpec.DateSpec(text(block, "format"), textOr(block, "precision", "FULL"),
+                    retiredPre1900Check(block));
+            case TIME -> new FieldTypeSpec.TimeSpec(text(block, "format"));
+            case DATE_TIME -> new FieldTypeSpec.DateTimeSpec(text(block, "format"));
+            case DATE_RANGE -> new FieldTypeSpec.DateRangeSpec(req(block, "format"), req(block, "separator"),
                     // absent key = STANDARD (the default has no DM-JSON spelling); an unknown token throws a
                     // corrective naming it, which the caller surfaces as an invalid-spec refusal.
-                    RangeYearInterpretation.fromJson(text(spec.path("dateRange"), "interpretationOfYear")),
-                    retiredPre1900Check(spec.path("dateRange")));
-            case "DATEFRAGMENT", "DATE_FRAGMENT" -> new FieldTypeSpec.DateFragmentSpec(
-                    req(spec.path("dateFragment"), "format"),
-                    retiredPre1900Check(spec.path("dateFragment")));
-            case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec(
-                    text(spec.path("boolean"), "trueValue"), text(spec.path("boolean"), "falseValue"));
-            case "CONFIRM" -> new FieldTypeSpec.ConfirmSpec(
-                    text(spec.path("confirm"), "trueValue"), text(spec.path("confirm"), "falseValue"));
-            // a kind with no config block falls through its case above with empty config (= a bare spec);
-            // anything here is genuinely unknown
-            default -> throw new IllegalArgumentException("unknown field kind: '" + kindText
-                    + "' (STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | "
-                    + "BOOLEAN | CONFIRM | ENUM | CUSTOM, or a \"typedef\")");
+                    RangeYearInterpretation.fromJson(text(block, "interpretationOfYear")),
+                    retiredPre1900Check(block));
+            case DATE_FRAGMENT -> new FieldTypeSpec.DateFragmentSpec(req(block, "format"), retiredPre1900Check(block));
+            case BOOLEAN -> new FieldTypeSpec.BooleanSpec(text(block, "trueValue"), text(block, "falseValue"));
+            case CONFIRM -> new FieldTypeSpec.ConfirmSpec(text(block, "trueValue"), text(block, "falseValue"));
+            case UNKNOWN -> throw new IllegalStateException("valueKind never returns UNKNOWN");
         };
+    }
+
+    /**
+     * The key of the per-kind config block a spec of {@code kind} carries. It is not derivable from the kind's
+     * name ({@code DATE_RANGE} takes {@code dateRange}, {@code ENUMERATION} takes {@code enum}), so a producer
+     * of specs asks here rather than lower-casing the kind.
+     */
+    public static String configBlockKey(String kind) {
+        return configBlockKey(valueKind(kind));
+    }
+
+    private static String configBlockKey(ValueKind kind) {
+        return switch (kind) {
+            case STRING -> "string";
+            case NUMBER -> "number";
+            case ENUMERATION -> "enum";
+            case CUSTOM -> "custom";
+            case DATE -> "date";
+            case TIME -> "time";
+            case DATE_TIME -> "dateTime";
+            case DATE_RANGE -> "dateRange";
+            case DATE_FRAGMENT -> "dateFragment";
+            case BOOLEAN -> "boolean";
+            case CONFIRM -> "confirm";
+            case UNKNOWN -> throw new IllegalStateException("valueKind never returns UNKNOWN");
+        };
+    }
+
+    /** The spec kinds: every {@link ValueKind} but the read-side {@code UNKNOWN}, spelled as reads report them. */
+    private static final List<ValueKind> SPEC_KINDS = Arrays.stream(ValueKind.values())
+            .filter(k -> k != ValueKind.UNKNOWN).toList();
+
+    /**
+     * The spec kind spelled exactly as {@code field read}/{@code typedef read} report it, so a read-back value
+     * pastes into a spec. A near miss (a case variant, a compact {@code DATERANGE}, {@code ENUM}) is refused
+     * with the one spelling rather than accepted as an alias the schema does not show (CG28).
+     */
+    private static ValueKind valueKind(String kindText) {
+        Optional<ValueKind> exact = SPEC_KINDS.stream().filter(k -> k.name().equals(kindText)).findFirst();
+        if (exact.isPresent()) {
+            return exact.get();
+        }
+        // the meant kind: the same letters ignoring case and underscores, else the one kind it abbreviates (ENUM)
+        String folded = fold(kindText);
+        Optional<ValueKind> meant = SPEC_KINDS.stream().filter(k -> fold(k.name()).equals(folded)).findFirst()
+                .or(() -> {
+                    List<ValueKind> abbreviated = SPEC_KINDS.stream()
+                            .filter(k -> !folded.isEmpty() && fold(k.name()).startsWith(folded)).toList();
+                    return abbreviated.size() == 1 ? Optional.of(abbreviated.get(0)) : Optional.empty();
+                });
+        throw new IllegalArgumentException(meant
+                .map(k -> "field kind '" + kindText + "' is spelled \"" + k.name() + "\"")
+                .orElse("unknown field kind: '" + kindText + "'")
+                + " (" + SPEC_KINDS.stream().map(ValueKind::name).collect(Collectors.joining(" | "))
+                + ", or a \"typedef\")");
+    }
+
+    private static String fold(String kind) {
+        return kind.toUpperCase(Locale.ROOT).replace("_", "");
     }
 
     /**

@@ -99,7 +99,7 @@ class SignAndPre1900AuthoringVerbTest {
     void fieldAddAcceptsTheFragmentPre1900CheckAndFieldReadEchoesIt(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"BilledMonth","kind":"DATEFRAGMENT",
+                {"group":"/Order","name":"BilledMonth","kind":"DATE_FRAGMENT",
                  "dateFragment":{"format":"yyyy-MM","rejectBefore1900":true}}""");
 
         var added = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
@@ -118,7 +118,7 @@ class SignAndPre1900AuthoringVerbTest {
     void fieldAddAcceptsTheRangePre1900CheckAndFieldReadEchoesIt(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"CoverWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM.yyyy","separator":"-","rejectBefore1900":true}}""");
 
         var added = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
@@ -130,7 +130,7 @@ class SignAndPre1900AuthoringVerbTest {
         assertTrue(range.path("rejectBefore1900").asBoolean(false), read::out);
 
         Path modify = spec(dir, "modify.json", "{\"group\":\"/Order\",\"name\":\"CoverWindow\","
-                + "\"kind\":\"DATERANGE\",\"dateRange\":" + range.toString() + "}");
+                + "\"kind\":\"DATE_RANGE\",\"dateRange\":" + range.toString() + "}");
         var modified = CliTestSupport.run("-m", model.toString(), "field", "modify", modify.toString());
         assertEquals(0, modified.code(), modified::err);
     }
@@ -145,13 +145,13 @@ class SignAndPre1900AuthoringVerbTest {
     void aYearFreeFragmentOrRangeWithTheCheckIsAdmitted(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path fragment = spec(dir, "fragment.json", """
-                {"group":"/Order","name":"BilledPeriod","kind":"DATEFRAGMENT",
+                {"group":"/Order","name":"BilledPeriod","kind":"DATE_FRAGMENT",
                  "dateFragment":{"format":"MM-dd","rejectBefore1900":true}}""");
         var fragmentAdded = CliTestSupport.run("-m", model.toString(), "field", "add", fragment.toString());
         assertEquals(0, fragmentAdded.code(), fragmentAdded::err);
 
         Path range = spec(dir, "range.json", """
-                {"group":"/Order","name":"BilledWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"BilledWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"MM-dd","separator":"/","rejectBefore1900":true}}""");
         var rangeAdded = CliTestSupport.run("-m", model.toString(), "field", "add", range.toString());
         assertEquals(0, rangeAdded.code(), rangeAdded::err);

@@ -119,7 +119,7 @@ public interface PatternEntry {
     /**
      * A {@link PatternKind#FIELD} result — a constrained field (the field-level alternative to a rule, the
      * twin R2's {@code seeAlso} bridge names) to add to {@code group}. Pure data: {@code kind} is the field
-     * kind ({@code NUMBER}/{@code STRING}/{@code ENUM}) and {@code config} the per-kind config block in
+     * kind ({@code NUMBER}/{@code STRING}/{@code ENUMERATION}) and {@code config} the per-kind config block in
      * {@code field add} shape (e.g. {@code {min, max}} / {@code {pattern, patternMessage}} /
      * {@code {values: [{value}]}}). The rulekit catalog stays modelkit-free (the sibling boundary) — the CLI
      * assembles + parses the field via {@code FieldSpec}.

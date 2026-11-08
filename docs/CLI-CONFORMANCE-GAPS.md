@@ -26,12 +26,6 @@ A function argument that should be a quoted constant is resolved as a field name
 
 *Blocks: nothing. Closes when the enricher recognizes an unresolved entity that is a bare number or other constant and names quoting as the corrective.*
 
-### CG28 — field kinds are spelled two ways and the parser accepts both silently <a id="cg28"></a>
-
-`field add`/`field modify` input documents `DATERANGE`, `DATETIME`, `DATEFRAGMENT` and `ENUM`, while `field read`, `typedef read` and the `changed.kind` echo spell them `DATE_RANGE`, `DATE_TIME`, `DATE_FRAGMENT` and `ENUMERATION`; the parser silently accepts both spellings (`field add` with `kind:"DATE_RANGE"` is `applied`, measured 2026-11-08). A read-back value cannot be pasted into a spec under the documented vocabulary, and the accepted alias is a hidden one. Choosing the one spelling is a contract decision for both directions.
-
-*Blocks: nothing. Closes when input and output share one documented spelling and the other is refused with a corrective, or the alias is documented.*
-
 ## 2. Deferred — with re-open triggers
 
 - **CG26 — `field`/`group` `rename` and `move` do not list the document uniqueness criteria they rewrote.** <a id="cg26"></a> *(Deferred 2026-11-03: no consumer has asked for it.)* A12's move support rewrites a criterion's fields and its `$path$` text with the model (`adapter.UniquenessCriterionRewriteTest`, [KF671](KERNEL-FINDINGS.md#kf671)), and the result is kernel-checked, but `rewroteReferences` names rules and computations only, so the rewrite goes unreported. *Re-open when* a reviewer needs the criteria in the refactor receipt.

@@ -9,7 +9,7 @@
   "properties": {
     "group": { "type": "string", "description": "the parent group's ABSOLUTE name-path, e.g. /Order (must exist)" },
     "name": { "type": "string", "description": "the new field's name (unique within its group)" },
-    "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
+    "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATE_TIME | DATE_RANGE | DATE_FRAGMENT | BOOLEAN | CONFIRM | ENUMERATION | CUSTOM (omit when `typedef` is given)" },
     "typedef": { "type": "string", "description": "type the field by an existing type-definition id (wins over `kind`)" },
     "required": { "enum": [true, false, "ifParentPresent"], "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
     "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; any subset of the declared locales is accepted, and a locale the model does not declare is kept rather than dropped" },
@@ -47,7 +47,7 @@
       }
     },
     "enum": {
-      "type": "object", "description": "(kind ENUM) config", "additionalProperties": false,
+      "type": "object", "description": "(kind ENUMERATION) config", "additionalProperties": false,
       "required": ["values"],
       "properties": {
         "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList / FieldValueNotIncludedInValueList — the rule-level way to (dis)allow a value set",
@@ -72,21 +72,21 @@
     },
     "date": {
       "type": "object", "description": "(kind DATE) config", "additionalProperties": false,
-      "properties": { "format": { "type": "string", "description": "Case-sensitive Java pattern from one fixed whitelist shared by DATE, TIME and DATETIME, keyed on the string, not the kind. The thirteen: yyyy-MM-dd, dd.MM.yyyy, yyyyMMdd; yyyy, yyyy-MM, yyyyMM, MM, MM-dd, MMdd, ddMM, dd.MM.; HH:mm:ss; yyyy-MM-dd'T'HH:mm:ss. Separators count: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM are refused (dd.MM. with the trailing dot is admitted, and dd.MM is a DATERANGE format only). Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY-MM-DD) are not values: copy a spelling exactly. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL; every precision still admits fully known dates" }, "rejectBefore1900": { "type": "boolean", "description": "Deprecated and without effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so read output round-trips; default false." } }
+      "properties": { "format": { "type": "string", "description": "Case-sensitive Java pattern from one fixed whitelist shared by DATE, TIME and DATE_TIME, keyed on the string, not the kind. The thirteen: yyyy-MM-dd, dd.MM.yyyy, yyyyMMdd; yyyy, yyyy-MM, yyyyMM, MM, MM-dd, MMdd, ddMM, dd.MM.; HH:mm:ss; yyyy-MM-dd'T'HH:mm:ss. Separators count: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM are refused (dd.MM. with the trailing dot is admitted, and dd.MM is a DATE_RANGE format only). Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY-MM-DD) are not values: copy a spelling exactly. Default yyyy-MM-dd." }, "precision": { "type": "string", "description": "FULL (default) | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL; every precision still admits fully known dates" }, "rejectBefore1900": { "type": "boolean", "description": "Deprecated and without effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so read output round-trips; default false." } }
     },
     "time": {
       "type": "object", "description": "(kind TIME) config", "additionalProperties": false,
       "properties": { "format": { "type": "string", "description": "a Java pattern from the shared temporal whitelist (see date.format). HH:mm (no seconds) is rejected, while a date pattern such as yyyy-MM-dd is admitted on a TIME field. Default HH:mm:ss." } }
     },
     "dateTime": {
-      "type": "object", "description": "(kind DATETIME) config", "additionalProperties": false,
+      "type": "object", "description": "(kind DATE_TIME) config", "additionalProperties": false,
       "properties": { "format": { "type": "string", "description": "Case-sensitive Java date+time pattern, conventionally the ISO instant yyyy-MM-dd'T'HH:mm:ss, though any of the thirteen temporal patterns (see date.format) is admitted; check the exact form with `field add --dry-run`." } }
     },
     "dateRange": {
-      "type": "object", "description": "(kind DATERANGE) config", "additionalProperties": false,
+      "type": "object", "description": "(kind DATE_RANGE) config", "additionalProperties": false,
       "required": ["format", "separator"],
       "properties": {
-        "format": { "type": "string", "description": "Case-sensitive Java date pattern for both endpoints, from a fixed set independent of locale and conditionLanguage. The (format, separator) PAIR is allowlisted, never the format alone: see `separator` for the twelve admitted pairs. Formats: dd.MM.yyyy, yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd and dd.MM; yyyyMM is a legal DATE format but not a DATERANGE one, and dd.MM the reverse. Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY-MM-DD, MM/MM, …) are not values: copy a spelling exactly." },
+        "format": { "type": "string", "description": "Case-sensitive Java date pattern for both endpoints, from a fixed set independent of locale and conditionLanguage. The (format, separator) PAIR is allowlisted, never the format alone: see `separator` for the twelve admitted pairs. Formats: dd.MM.yyyy, yyyy-MM-dd, yyyy, yyyy-MM, MM, MM-dd and dd.MM; yyyyMM is a legal DATE format but not a DATE_RANGE one, and dd.MM the reverse. Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY-MM-DD, MM/MM, …) are not values: copy a spelling exactly." },
         "separator": { "type": "string", "description": "The separator PAIRED with `format`; exactly twelve pairs are admitted: - with dd.MM.yyyy or dd.MM, and / or the empty separator (read as /) with yyyy-MM-dd, yyyy, yyyy-MM, MM or MM-dd. Everything else is refused as 'The date range format is invalid': every separator swap, a '.' separator with any format, a spaced ' - ', and yyyyMM with any separator." },
         "interpretationOfYear": { "type": "string", "enum": ["FROM", "TO"], "description": "Matters only for a yearless range that wraps the year end (01.11-31.01 on dd.MM, otherwise start-after-end and invalid): the endpoint that keeps the base year while the other moves, the reverse of what the names suggest. FROM rolls the end forward a year, TO rolls the start back. The default, STANDARD (both endpoints in the base year), has no spelling: omit the key, since the tokens STANDARD, PREVIOUS and SUBSEQUENT are refused. Effective only when the model declares a base year (`config modify`)." },
         "rejectBefore1900": { "type": "boolean", "description": "Deprecated and without effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so read output round-trips; default false." }
@@ -105,11 +105,11 @@
         "falseValue": { "type": "string", "description": "A representation for false where it differs from A12's default (DM-JSON `notInDCustomFalseValue`). The model keeps it, but validation never consults it: the stored value is still the literal `true` or nothing. Independent of trueValue; omitting both writes no config block." } }
     },
     "dateFragment": {
-      "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
+      "type": "object", "description": "(kind DATE_FRAGMENT) config", "additionalProperties": false,
       "required": ["format"],
       "properties": {
         "rejectBefore1900": { "type": "boolean", "description": "Deprecated and without effect: A12 stores youngerThan1900Check but does not evaluate it, so a lower bound on dates needs a rule. Accepted so read output round-trips; default false." },
-        "format": { "type": "string", "description": "Case-sensitive Java pattern, conventionally a partial date (MM, yyyy, yyyy-MM, MM-dd), though it admits the same thirteen patterns as DATE/TIME/DATETIME (see date.format). Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY, YYYY-MM) are not values: copy a spelling exactly." } }
+        "format": { "type": "string", "description": "Case-sensitive Java pattern, conventionally a partial date (MM, yyyy, yyyy-MM, MM-dd), though it admits the same thirteen patterns as DATE/TIME/DATE_TIME (see date.format). Case counts (MM months, mm minutes), and no all-lowercase or all-uppercase spelling is admitted, so the editor's UPPERCASE labels (YYYY, YYYY-MM) are not values: copy a spelling exactly." } }
     }
   },
   "examples": [
@@ -135,13 +135,13 @@
     {
       "group": "/Subscription/Addons",
       "name": "PromoWindow",
-      "kind": "DATERANGE",
+      "kind": "DATE_RANGE",
       "dateRange": { "format": "dd.MM.yyyy", "separator": "-" }
     },
     {
       "group": "/Subscription/Addons",
       "name": "BilledMonth",
-      "kind": "DATEFRAGMENT",
+      "kind": "DATE_FRAGMENT",
       "dateFragment": { "format": "yyyy-MM" }
     },
     {

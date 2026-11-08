@@ -42,7 +42,7 @@ class DateRangeInterpretationVerbTest {
     void fieldAddAcceptsTheInterpretationAndFieldReadEchoesIt(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"CoverWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"TO"}}""");
 
         var added = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
@@ -62,7 +62,7 @@ class DateRangeInterpretationVerbTest {
             throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"PlainWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"PlainWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM","separator":"-"}}""");
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString()).code());
 
@@ -78,14 +78,14 @@ class DateRangeInterpretationVerbTest {
     void whatFieldReadReportsIsAcceptedBackByFieldModify(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"CoverWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"FROM"}}""");
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString()).code());
 
         JsonNode range = M.readTree(CliTestSupport.run(
                 "-m", model.toString(), "field", "read", "/Order/CoverWindow").out()).path("data").path("dateRange");
         Path echoed = spec(dir, "echoed.json", M.writeValueAsString(M.createObjectNode()
-                .put("group", "/Order").put("name", "CoverWindow").put("kind", "DATERANGE")
+                .put("group", "/Order").put("name", "CoverWindow").put("kind", "DATE_RANGE")
                 .set("dateRange", range)));
 
         var modified = CliTestSupport.run("-m", model.toString(), "field", "modify", echoed.toString());
@@ -108,7 +108,7 @@ class DateRangeInterpretationVerbTest {
     void aRefusedSpellingIsRejectedWithACorrective(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "spec.json", """
-                {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
+                {"group":"/Order","name":"CoverWindow","kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"SUBSEQUENT"}}""");
 
         var res = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
@@ -127,7 +127,7 @@ class DateRangeInterpretationVerbTest {
     void typedefAddCarriesTheInterpretationToo(@TempDir Path dir) throws Exception {
         Path model = model(dir);
         Path spec = spec(dir, "typedef.json", """
-                {"kind":"DATERANGE",
+                {"kind":"DATE_RANGE",
                  "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"TO"}}""");
 
         var added = CliTestSupport.run("-m", model.toString(), "typedef", "add",
@@ -153,12 +153,12 @@ class DateRangeInterpretationVerbTest {
         Path model = model(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
                 spec(dir, "declared.json", """
-                        {"group":"/Order","name":"WrapFrom","kind":"DATERANGE",
+                        {"group":"/Order","name":"WrapFrom","kind":"DATE_RANGE",
                          "dateRange":{"format":"dd.MM","separator":"-","interpretationOfYear":"FROM"}}""")
                         .toString()).code());
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
                 spec(dir, "plain.json", """
-                        {"group":"/Order","name":"PlainWindow","kind":"DATERANGE",
+                        {"group":"/Order","name":"PlainWindow","kind":"DATE_RANGE",
                          "dateRange":{"format":"dd.MM","separator":"-"}}""").toString()).code());
 
         var declared = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/WrapFrom", "--text");

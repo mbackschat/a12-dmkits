@@ -12,7 +12,7 @@ import java.util.function.Supplier;
  * Reads a JSON input a caller named on the command line — a file path, or <b>{@code -} for stdin</b>.
  *
  * <p><b>Why one shared reader.</b> Only the config-LESS field kinds can be authored with flags; TIME,
- * DATETIME, DATERANGE, DATEFRAGMENT, ENUM and CUSTOM carry per-kind config and so needed a spec file on disk,
+ * DATE_TIME, DATE_RANGE, DATE_FRAGMENT, ENUMERATION and CUSTOM carry per-kind config and so needed a spec file on disk,
  * which turned a scripted author into a loop with cleanup. {@code -} removes that without adding a second
  * authoring shape: the rich-spec schema stays the single source for the config, exactly as for the file form.
  * (A {@code --config <json>} flag was the alternative and is deliberately not built — it would duplicate that

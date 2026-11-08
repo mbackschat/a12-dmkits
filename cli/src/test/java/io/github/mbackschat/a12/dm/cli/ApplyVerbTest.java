@@ -89,7 +89,7 @@ class ApplyVerbTest {
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, """
                 [ {"target":"group","op":"modify","groupPathInModel":"/Subscription/Addons","index-field":"Name"},
-                  {"target":"typedef","op":"add","id":"Tier","kind":"ENUM",
+                  {"target":"typedef","op":"add","id":"Tier","kind":"ENUMERATION",
                    "enum":{"values":[{"value":"GOLD"},{"value":"SILVER"}]}},
                   {"target":"config","op":"modify","role":["admin","editor"]} ]""");
 
@@ -238,7 +238,7 @@ class ApplyVerbTest {
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code());
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, """
-                [ {"target":"field","op":"add","group":"/Doc","name":"Tier","kind":"ENUM",
+                [ {"target":"field","op":"add","group":"/Doc","name":"Tier","kind":"ENUMERATION",
                    "enum":{"values":[{"value":"BASIC","labels":{"en_US":"Basic"}}]}} ]""");
 
         var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());

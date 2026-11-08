@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 ### Changed
 
 - **BREAKING:** targets A12 Kernel `31.3.1` / A12 Tools `2026.06-ext2` and writes the DM `29.8.0` model format, which kernel 31.1.1 cannot read; models down to `29.4.0` still load.
+- **BREAKING:** a spec's `kind` takes the one spelling `field read` and `typedef read` report: `DATE_TIME`, `DATE_RANGE`, `DATE_FRAGMENT` and `ENUMERATION`. The compact `DATETIME`, `DATERANGE`, `DATEFRAGMENT`, `ENUM` and case variants such as `string` are refused with the spelling to use.
 - **BREAKING:** a computation's suppressed warnings are A12's `additionalParserInformation` preamble (`@SuppressWarning(<codes>)`). The `errorCodesToSuppress` key is gone from the computation specs and from `computation read`, so a spec that still carries it is refused as an unrecognized key.
 - **`dmtool manifest` returns an index:** one entry per verb (name, schema pointer, description), about a fourteenth of the full document. `dmtool manifest <target> [<op>]` returns the full entries of those verbs, and `dmtool manifest --full` restores the previous whole-tree output.
 - `rejectBefore1900` is deprecated and has no effect, because A12 no longer evaluates `youngerThan1900Check`. It is still accepted and read back, and it no longer refuses a year-free format.

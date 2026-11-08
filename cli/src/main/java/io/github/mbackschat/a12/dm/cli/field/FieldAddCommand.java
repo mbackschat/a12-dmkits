@@ -66,7 +66,7 @@ final class FieldAddCommand extends BaseCommand {
         @ParamKind(ParamKind.Kind.FIELD_KIND)
         @Option(names = "--kind", paramLabel = "<kind>",
                 description = "the field kind, SIMPLE (config-less) form: STRING | NUMBER | DATE | BOOLEAN | "
-                        + "CONFIRM. The config-bearing kinds — TIME | DATETIME | DATERANGE | DATEFRAGMENT | ENUM "
+                        + "CONFIRM. The config-bearing kinds — TIME | DATE_TIME | DATE_RANGE | DATE_FRAGMENT | ENUMERATION "
                         + "| CUSTOM — carry config, so they need a <spec.json> instead (see `schema field add`).")
         FieldKind kind;
 

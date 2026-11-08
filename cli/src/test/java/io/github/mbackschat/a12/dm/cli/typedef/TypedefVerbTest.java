@@ -150,7 +150,7 @@ class TypedefVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path spec = dir.resolve("tier.json");
         Files.writeString(spec, """
-                { "kind": "ENUM",
+                { "kind": "ENUMERATION",
                   "enum": { "values": [
                     {"value":"GOLD","labels":{"en_US":"Gold"}},
                     {"value":"SILVER","labels":{"en_US":"Silver"}} ] } }""");

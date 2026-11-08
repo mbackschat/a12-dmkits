@@ -424,7 +424,7 @@ dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
 For a richer type — a reusable **enum** or a **restricted** string/number — pass a `<spec.json>` instead of `--kind` (the same per-kind config a `field add` spec takes; see `schema typedef add`). Here a reusable `BillingCycle` enum:
 
 ```bash
-echo '{ "kind": "ENUM", "enum": { "values": [ {"value":"MONTHLY"}, {"value":"ANNUAL"} ] } }' > /tmp/cycle.json
+echo '{ "kind": "ENUMERATION", "enum": { "values": [ {"value":"MONTHLY"}, {"value":"ANNUAL"} ] } }' > /tmp/cycle.json
 dmtool -m /tmp/struct2-td.json typedef add --id BillingCycle /tmp/cycle.json \
   | jq -c '{outcome, added: .changed.added, kind: .changed.kind}'
 ```

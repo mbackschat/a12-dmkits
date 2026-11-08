@@ -208,9 +208,9 @@ public enum BuiltInPattern implements PatternEntry {
     },
 
     VALUE_SET_ENUM("value-set-enum",
-            "add an ENUM field restricted to a fixed value set (the field-level alternative to a value-list rule)",
+            "add an ENUMERATION field restricted to a fixed value set (the field-level alternative to a value-list rule)",
             "the allowed set lives in the field config (enum.values), not a rule — see `operators FieldValueIncludedInValueList`'s seeAlso",
-            "field ${name} in ${group}: ENUM with enum.values=${values}",
+            "field ${name} in ${group}: ENUMERATION with enum.values=${values}",
             List.of(param("group", GROUP, "the existing group to add the field to (e.g. /Order)"),
                     param("name", NAME, "the new field's name"),
                     param("values", VALUE, "the allowed values, comma-separated (enum.values)")),
@@ -230,7 +230,7 @@ public enum BuiltInPattern implements PatternEntry {
             }
             Map<String, Object> config = new LinkedHashMap<>();
             config.put("values", values);
-            return new FieldInstantiation(req(a, "group"), req(a, "name"), "ENUM", config);
+            return new FieldInstantiation(req(a, "group"), req(a, "name"), "ENUMERATION", config);
         }
     };
 

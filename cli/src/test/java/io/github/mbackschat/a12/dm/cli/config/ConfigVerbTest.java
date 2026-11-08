@@ -181,7 +181,7 @@ class ConfigVerbTest {
                 "--root", "M", "-o", model.toString()).code());
         Path spec = dir.resolve("tier.json");
         Files.writeString(spec, """
-                { "group":"/M", "name":"Tier", "kind":"ENUM",
+                { "group":"/M", "name":"Tier", "kind":"ENUMERATION",
                   "enum": { "values": [ {"value":"GOLD","labels":{"en_US":"Gold"}},
                                         {"value":"SILVER","labels":{"en_US":"Silver"}} ] } }""");
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString()).code(),

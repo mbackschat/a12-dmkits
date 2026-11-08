@@ -47,13 +47,13 @@ class CliHelpTest {
     @Test
     void fieldAddHelpSurfacesTheConfigBearingKindsViaTheSpec() {
         // probe DX: the --kind FLAG binds only the 5 simple kinds (STRING/NUMBER/DATE/BOOLEAN/CONFIRM); the 6
-        // config-bearing kinds (TIME/DATETIME/DATERANGE/DATEFRAGMENT/ENUM/CUSTOM) need a <spec.json> (they
+        // config-bearing kinds (TIME/DATE_TIME/DATE_RANGE/DATE_FRAGMENT/ENUMERATION/CUSTOM) need a <spec.json> (they
         // carry config). The help must name them and point at the spec — else an agent reading --kind alone
         // concludes only 5 kinds exist.
         CliTestSupport.Result res = CliTestSupport.run("field", "add", "--help");
         assertEquals(0, res.code(), res::err);
         String out = res.out();
-        assertTrue(out.contains("DATERANGE") && out.contains("ENUM"),
+        assertTrue(out.contains("DATE_RANGE") && out.contains("ENUMERATION"),
                 () -> "field add --help names the config-bearing kinds: " + out);
         assertTrue(out.contains("schema field add") || out.contains("spec.json"),
                 () -> "field add --help points to the spec for the config-bearing kinds: " + out);

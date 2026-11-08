@@ -43,7 +43,7 @@ class SpecValueRefusalEnvelopeTest {
               "number": { "maxFractionalDigits": 15 } }""";
 
     private static final String UNALIGNED_CATEGORY = """
-            { "group": "/Store", "name": "Tier", "kind": "ENUM",
+            { "group": "/Store", "name": "Tier", "kind": "ENUMERATION",
               "enum": { "values": [ {"value":"A"}, {"value":"B"} ],
                         "categories": [ {"name":"Grp", "values": ["A"] } ] } }""";
 
@@ -110,13 +110,13 @@ class SpecValueRefusalEnvelopeTest {
                         "typedef", "add", "--id", "Scale_TDM")));
         Path aligned = dir.resolve("aligned.json");
         Files.writeString(aligned, """
-                { "kind": "ENUM", "enum": { "values": [ {"value":"A"}, {"value":"B"} ] } }""");
+                { "kind": "ENUMERATION", "enum": { "values": [ {"value":"A"}, {"value":"B"} ] } }""");
         CliTestSupport.Result declared = CliTestSupport.run("-m", model.toString(), "typedef", "add",
                 "--id", "Tier_TDM", aligned.toString());
         assertEquals(0, declared.code(), declared::err);
         actual.put("typedef modify — unaligned enum category",
                 code(reject(dir, model, "e.json", """
-                        { "kind": "ENUM",
+                        { "kind": "ENUMERATION",
                           "enum": { "values": [ {"value":"A"}, {"value":"B"} ],
                                     "categories": [ {"name":"Grp", "values": ["A"] } ] } }""",
                         "typedef", "modify", "--id", "Tier_TDM")));

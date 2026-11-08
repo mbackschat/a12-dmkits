@@ -59,7 +59,7 @@ class FieldAddSpecTest {
     @Test
     void enumSpecWithValuesCategoriesAndInvalidMessage(@TempDir Path dir) throws Exception {
         String written = Files.readString(run(dir, """
-            {"group":"/Order","name":"Urgency","kind":"ENUM",
+            {"group":"/Order","name":"Urgency","kind":"ENUMERATION",
              "enum":{"values":[{"value":"LOW","labels":{"en_US":"Low"}},{"value":"HIGH","labels":{"en_US":"High"}}],
                      "categories":[{"name":"Tier","values":["calm","urgent"]}],
                      "alphabeticalSorting":true,"invalidValueMessage":"pick LOW or HIGH"}}"""));
@@ -77,7 +77,7 @@ class FieldAddSpecTest {
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE").code());
         Path specFile = dir.resolve("tier.json");
         Files.writeString(specFile, """
-            {"group":"/Doc","name":"Tier","kind":"ENUM",
+            {"group":"/Doc","name":"Tier","kind":"ENUMERATION",
              "enum":{"values":[{"value":"GOLD","labels":{"en_US":"Gold","de_DE":"Gold"}},
                                {"value":"SILVER","labels":{"en_US":"Silver","de_DE":"Silber"}}],
                      "errorMessages":{"en_US":"pick a valid tier","de_DE":"bitte eine gueltige Stufe waehlen"}}}""");
@@ -150,7 +150,7 @@ class FieldAddSpecTest {
         // SME 1133: a category may carry an optional description. It's an editor-level note (part of the
         // model, not workspace settings) the kernel core tolerates + preserves (KERNEL-FINDINGS §8).
         String written = Files.readString(run(dir, """
-            {"group":"/Order","name":"Urgency","kind":"ENUM",
+            {"group":"/Order","name":"Urgency","kind":"ENUMERATION",
              "enum":{"values":[{"value":"LOW"},{"value":"HIGH"}],
                      "categories":[{"name":"Tier","description":"escalation grouping","values":["calm","urgent"]}]}}"""));
         assertTrue(written.contains("escalation grouping"), "the category description persists in the model");

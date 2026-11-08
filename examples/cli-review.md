@@ -285,7 +285,7 @@ A typedef is a shared declaration, not merely a property copied onto each using 
 
 ```bash
 cat > /tmp/review-tier.json <<'EOF'
-{ "kind": "ENUM", "enum": { "values": [ {"value":"STANDARD"}, {"value":"PREMIUM"} ] } }
+{ "kind": "ENUMERATION", "enum": { "values": [ {"value":"STANDARD"}, {"value":"PREMIUM"} ] } }
 EOF
 cp examples/models/order-ruled.dm.json /tmp/review-typedef.dm.json
 dmtool -m /tmp/review-typedef.dm.json typedef add --id CustomerTier /tmp/review-tier.json >/dev/null

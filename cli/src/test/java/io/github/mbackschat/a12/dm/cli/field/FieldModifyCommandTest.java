@@ -60,7 +60,7 @@ class FieldModifyCommandTest {
         // CustomerName is read only by FieldFilled (kind-agnostic) + a named CustomCondition, so STRING→ENUM
         // is kernel-accepted — yet a reader exists, so the author gets a heads-up advisory to audit it.
         Files.writeString(spec, """
-                {"group":"/Order","name":"CustomerName","kind":"ENUM",
+                {"group":"/Order","name":"CustomerName","kind":"ENUMERATION",
                  "enum":{"values":[{"value":"RETAIL"},{"value":"WHOLESALE"}]}}""");
 
         CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());

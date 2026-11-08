@@ -618,7 +618,7 @@ final class ApplyCommand extends BaseCommand {
             case TYPEDEF_ADD -> {
                 // the same rich per-kind config as the standalone `typedef add <spec>` (G25), via the shared
                 // FieldSpec.parseType — a bare {id,kind} stays the simple case, an `enum`/`string` block makes
-                // an ENUM/restricted type. Single-sourced so the op and the verb can't drift.
+                // an ENUMERATION/restricted type. Single-sourced so the op and the verb can't drift.
                 String id = req(op, "id");
                 session.addTypeDefinition(id, FieldSpec.parseType(op, id));
                 changed.put("added", id);

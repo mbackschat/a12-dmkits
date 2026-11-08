@@ -36,7 +36,7 @@ class StdinJsonInputTest {
     // config-less kinds. Deliberately NOT exercising interpretationOfYear here — that is G53's slice, and
     // coupling the two would make each one's failures read as the other's.
     private static final String RANGE_SPEC = """
-            {"group":"/Order","name":"CoverWindow","kind":"DATERANGE",
+            {"group":"/Order","name":"CoverWindow","kind":"DATE_RANGE",
              "dateRange":{"format":"dd.MM","separator":"-"}}""";
 
     private final Supplier<Reader> originalSource = JsonInput.stdinSource;

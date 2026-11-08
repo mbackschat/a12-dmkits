@@ -30,13 +30,13 @@ import java.util.Optional;
  * {@code dmtool typedef add --id <id>} — declare a reusable type definition and write the model back (in
  * place; {@code -o}/{@code --dry-run}). Two type shapes: the simple {@code --kind <K>} flag (a bare easy
  * kind), or a rich {@code <spec.json>} (positional) carrying the full per-kind config — the SAME shape a
- * field's type takes in {@code field add} ({@code schema typedef add}), so an ENUM type-def declares
+ * field's type takes in {@code field add} ({@code schema typedef add}), so an ENUMERATION type-def declares
  * {@code enum.values} and a restricted STRING declares {@code string.pattern} (G25). Fields then reference it
  * via {@code field add --typedef <id>}. Re-bound through the kernel; a kernel-invalid result is a
  * {@code rejected} envelope. ({@code --kind} and the spec are mutually exclusive.)
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
-        description = "Declare a reusable type definition (--id) — simple via --kind, or rich (ENUM/restricted) via a <spec.json>.")
+        description = "Declare a reusable type definition (--id) — simple via --kind, or rich (ENUMERATION/restricted) via a <spec.json>.")
 final class TypedefAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -48,7 +48,7 @@ final class TypedefAddCommand extends BaseCommand {
     @ParamKind(ParamKind.Kind.FIELD_KIND)
     @Option(names = "--kind", paramLabel = "<kind>",
             description = "the underlying easy kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM "
-                    + "(for a rich ENUM/restricted type, pass a <spec.json> instead)")
+                    + "(for a rich ENUMERATION/restricted type, pass a <spec.json> instead)")
     FieldKind kind;
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",

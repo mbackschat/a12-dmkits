@@ -294,7 +294,7 @@ final class PatternsCommand extends BaseCommand {
         fieldSpec.put("group", inst.group());
         fieldSpec.put("name", inst.name());
         fieldSpec.put("kind", inst.kind());
-        fieldSpec.set(inst.kind().toLowerCase(Locale.ROOT), MAPPER.valueToTree(inst.config()));
+        fieldSpec.set(FieldSpec.configBlockKey(inst.kind()), MAPPER.valueToTree(inst.config()));
         String target = inst.group() + "/" + inst.name();
 
         ModelDocument doc = ModelDocument.read(modelJson);

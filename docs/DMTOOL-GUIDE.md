@@ -460,7 +460,7 @@ dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUM
 dmtool -m order.dm.json field add fee-spec.json
 
 # …or pipe the same spec in, so a script needs no temp file (the config-bearing kinds —
-# TIME/DATETIME/DATERANGE/DATEFRAGMENT/ENUM/CUSTOM — cannot be expressed with --kind alone)
+# TIME/DATE_TIME/DATE_RANGE/DATE_FRAGMENT/ENUMERATION/CUSTOM — cannot be expressed with --kind alone)
 printf '%s' "$SPEC" | dmtool -m order.dm.json field add -
 
 dmtool -m order.dm.json group add --parent /Order --name Shipping
@@ -470,9 +470,9 @@ dmtool -m order.dm.json group add --parent / --name Claim
 # index field (also allowed on non-repeatable groups; repeating groups use it as their row key)
 dmtool -m order.dm.json group modify /Order/Items --index-field Sku
 
-# a reusable type — simple via --kind, or a rich ENUM/restricted type via a spec
+# a reusable type — simple via --kind, or a rich ENUMERATION/restricted type via a spec
 dmtool -m order.dm.json typedef add --id Money --kind NUMBER
-dmtool -m order.dm.json typedef add --id Tier tier-enum.json   # { "kind":"ENUM", "enum":{"values":[…]} }
+dmtool -m order.dm.json typedef add --id Tier tier-enum.json   # { "kind":"ENUMERATION", "enum":{"values":[…]} }
 dmtool -m order.dm.json typedef modify --id Money money-3dp.json   # change it in ONE place — typed fields inherit it
 
 dmtool -m order.dm.json config modify \
