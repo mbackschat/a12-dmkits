@@ -69,8 +69,9 @@ test("the launch arguments carry every isolation switch", () => {
   assert.deepEqual(JSON.parse(args[args.indexOf("--settings") + 1]), {
     autoMemoryEnabled: false,
     sandbox: { enabled: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false },
+    permissions: { deny: ["Edit(~/**)", "Write(~/**)"] },
   });
-  assert.equal(args[args.indexOf("--permission-mode") + 1], "acceptEdits");
+  assert.equal(args[args.indexOf("--permission-mode") + 1], "bypassPermissions");
   assert.deepEqual(args.flatMap((a: string, i: number) => (a === "--add-dir" ? [args[i + 1]] : [])), ["/tmp/a", "/tmp/b"]);
   assert.equal(args[args.indexOf("--tools") + 1], "Bash,Read");
   assert.equal(args[args.indexOf("--input-format") + 1], "stream-json");
@@ -128,10 +129,12 @@ test("a call the harness refused is reported, a failing tool call is not", (t: {
     result("This command requires approval"),
     result("Claude requested permissions to read from /tmp/s/SKILL.md, but you haven't granted it yet."),
     result("Output redirection to '/tmp/s/work/R.md' needs approval."),
+    result("<tool_use_error>File is in a directory that is denied by your permission settings.</tool_use_error>"),
+    JSON.stringify({ type: "system", subtype: "permission_denied", tool_name: "Bash", decision_reason: "Contains brace with quote character (expansion obfuscation)", message: "Contains brace with quote character (expansion obfuscation)" }),
     result("dmtool: rule check rejected the condition"),
     result("Exit code 1"),
   ];
-  assert.equal(refusals(lines.join("\n")).length, 3);
+  assert.equal(refusals(lines.join("\n")).length, 5);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clean-agent-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const file = path.join(dir, "t.jsonl");

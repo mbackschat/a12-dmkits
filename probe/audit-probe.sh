@@ -42,6 +42,9 @@ fi
 
 # A sandbox path may surface as /tmp/... or its /private/tmp/... realpath — accept both.
 SB_RE="^(/private)?${SANDBOX#/private}(/|$)"
+# Claude Code spills an oversized tool result to a file under its project directory for this working directory
+# and tells the agent to Read it there; that file is the agent's own earlier output, so check 2 accepts it.
+SPILL_RE="^$HOME/\.claude/projects/$(cd "$SANDBOX/work" 2>/dev/null && pwd -P | sed 's/[^A-Za-z0-9]/-/g')/[^/]+/tool-results/"
 
 echo "probe integrity audit"
 echo "  transcript : $T"
@@ -54,22 +57,22 @@ note() { printf '  %s\n' "$*"; }
 
 # Every tool input the agent issued (Bash command bodies + the path-ish args of file tools).
 tool_inputs() {
-  jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use")
+  jq -rc 'select((.message|type)=="object" and .message.content) | .message.content[]? | select(.type=="tool_use")
     | (.input.command // empty), (.input.file_path // empty), (.input.path // empty)' "$T"
 }
 # File-tool target paths only (what the agent read/wrote/searched directly, bypassing dmtool).
 file_paths() {
-  jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use")
+  jq -rc 'select((.message|type)=="object" and .message.content) | .message.content[]? | select(.type=="tool_use")
     | select(.name=="Read" or .name=="Write" or .name=="Edit" or .name=="NotebookEdit" or .name=="Glob" or .name=="Grep")
     | .input.file_path // .input.path // empty' "$T"
 }
 # Every Bash command body, one per line, JSON-escaped (a multi-line/heredoc command stays a single line).
 bash_cmds() {
-  jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use" and .name=="Bash")
+  jq -rc 'select((.message|type)=="object" and .message.content) | .message.content[]? | select(.type=="tool_use" and .name=="Bash")
     | .input.command // empty | @json' "$T"
 }
 write_basenames() {
-  jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use" and (.name=="Write" or .name=="Edit" or .name=="NotebookEdit"))
+  jq -rc 'select((.message|type)=="object" and .message.content) | .message.content[]? | select(.type=="tool_use" and (.name=="Write" or .name=="Edit" or .name=="NotebookEdit"))
     | .input.file_path // empty' "$T" | while read -r p; do [[ -n "$p" ]] && basename -- "$p"; done | sort -u
 }
 
@@ -84,7 +87,7 @@ fi
 
 # --- Check 2: every file read/written/searched is inside the sandbox ---
 echo "[2] material boundary — file ops confined to the sandbox"
-out="$(file_paths | grep -vE "$SB_RE" | grep -vE '^$' || true)"
+out="$(file_paths | grep -vE "$SB_RE" | grep -vE "$SPILL_RE" | grep -vE '^$' || true)"
 if [[ -n "$out" ]]; then
   fail=1; note "SUSPECT — a file tool touched a path outside the sandbox:"; printf '%s\n' "$out" | sed 's/^/      /'
 else
@@ -188,13 +191,13 @@ fi
 # 2026-11-08 with a canary only the global CLAUDE.md states), so the probe runs as a clean headless session
 # (scripts/typescript/clean-agent.ts) and this re-checks the init event that launch writes. A transcript with
 # no init event is an Agent-tool session and fails here.
-echo "[7] context isolation — the session started with no inherited context"
+echo "[7] context isolation — no inherited context, no harness refusal"
 iso="$("$REPO/scripts/run-typescript.sh" clean-agent "$REPO/scripts/typescript/clean-agent.ts" \
   --check-transcript "$T" --tools "$PROBE_TOOLS" 2>&1 || true)"
 if [[ -n "$iso" ]]; then
-  fail=1; note "SUSPECT — the session was not launched clean (probe/README.md step 3):"; printf '%s\n' "$iso" | sed 's/^/      /'
+  fail=1; note "SUSPECT — the session was not clean: inherited context or a refused call (probe/README.md step 3):"; printf '%s\n' "$iso" | sed 's/^/      /'
 else
-  note "clean — the init event shows only the probe tools, no skill, plugin, MCP server or slash command"
+  note "clean — only the probe tools, no skill, plugin, MCP server or slash command, and no refused call"
 fi
 
 echo

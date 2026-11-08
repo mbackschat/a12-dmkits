@@ -29,10 +29,12 @@ const { spawn } = require("node:child_process");
  * `--turns` takes a JSON array of prompts and runs them as successive turns of ONE session, each sent only after
  * the previous turn's result, as a probe needs; without it the prompt is read from stdin as the single turn.
  *
- * A clean session also has no permission rules, so it runs under the OS sandbox: Bash is allowed without a
- * prompt but can write only to the working directory and the `--writable` directories, and the Write and Edit
- * tools are accepted there. Anything else is refused, and a refused call is reported as a problem, because a
- * session whose tool calls were refused measured the harness, not dmtool.
+ * A clean session also has no permission rules, and nobody can answer a prompt, so its permission checks are
+ * bypassed and confinement comes from elsewhere: the OS sandbox lets Bash write only to the working directory
+ * and the `--writable` directories, and deny rules keep the Write and Edit tools out of the home directory,
+ * where the repository and the operator's configuration live. Without the bypass the harness refused 13 of 197
+ * Bash calls in four probe sessions even inside the sandbox, a heredoc of JSON among them (2026-11-08). Any refusal
+ * that remains is reported as a problem, because a session whose calls were refused measured the harness.
  *
  * `--check-transcript` re-checks a finished session, for the probe's audit: a transcript with no init event
  * (an Agent-tool subagent's) or a wider one fails, since only a clean launch writes a clean init event.
@@ -62,8 +64,10 @@ function cleanAgentArgs(options: Options): string[] {
       // No allow rules exist here, so the OS sandbox is what lets Bash run; with the escape hatch off, a
       // command the sandbox blocks fails instead of asking for an approval nobody can give.
       sandbox: { enabled: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false },
+      // Deny rules hold under the bypass mode (measured 2026-11-08); the OS sandbox does not cover these tools.
+      permissions: { deny: ["Edit(~/**)", "Write(~/**)"] },
     }),
-    "--permission-mode", "acceptEdits",
+    "--permission-mode", "bypassPermissions",
     ...(options.writable ?? []).flatMap(dir => ["--add-dir", dir]),
     "--strict-mcp-config",
     "--tools", options.tools.join(","),
@@ -92,17 +96,25 @@ function isolationProblems(init: Init, tools: string[]): string[] {
   return problems;
 }
 
-/** The harness's own refusal messages, as Claude Code 2.1.319 words them (measured 2026-11-08). */
-const REFUSAL = /requires approval|haven't granted it yet|needs approval|was blocked\. For security/;
+/**
+ * The harness's refusal messages, as Claude Code 2.1.319 words them (measured 2026-11-08). Most refusals also
+ * emit a `permission_denied` event, but a deny rule's does not, so both are read.
+ */
+const REFUSAL = /requires approval|haven't granted it yet|needs approval|was blocked\. For security|denied by your permission settings/;
 
-/** Every tool result in which the harness, not the tool, refused the call. */
+/** Every call the harness, not the tool, refused: a `permission_denied` event or a refusal in a tool result. */
 function refusals(text: string): string[] {
   const found: string[] = [];
   for (const line of text.split("\n")) {
-    if (!line.includes('"tool_result"')) continue;
-    let event: { message?: { content?: Array<{ type?: string; is_error?: boolean; content?: unknown }> } };
+    let event: { type?: string; subtype?: string; tool_name?: string; decision_reason?: string; message?: unknown };
     try { event = JSON.parse(line); } catch { continue; }
-    for (const block of event.message?.content ?? []) {
+    if (event.type === "system" && event.subtype === "permission_denied") {
+      found.push(`${event.tool_name}: ${event.decision_reason}`);
+      continue;
+    }
+    const content = (event.message as { content?: unknown } | undefined)?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content as Array<{ type?: string; is_error?: boolean; content?: unknown }>) {
       const content = typeof block.content === "string" ? block.content : JSON.stringify(block.content ?? "");
       if (block.type === "tool_result" && block.is_error && REFUSAL.test(content)) found.push(content.slice(0, 200));
     }
