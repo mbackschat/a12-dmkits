@@ -15,9 +15,10 @@ description: Release a12-dmkits — one version to all four repositories (the so
 ## Prepare (one commit, pushed)
 
 1. `scripts/bump-version.sh X.Y.Z`. Write the plugin changelog's `[X.Y.Z]` entries and the two library changelogs' `[@VERSION@]` entries. Headline topics only.
-2. Run `scripts/release-perf-gate.sh --fresh` on a near-idle machine (`uptime` first, nothing else running). It writes a `perf-results/` record; commit that too.
-3. Run `scripts/update-code-statistics.sh --artifact all`.
-4. Commit, then push `main`, but only once the owner has asked for the release, since a push burns CI minutes.
+2. Re-capture the native reflection metadata: `GRAALVM_HOME=<graalvm-25> ./scripts/capture-native-config.sh`. Its stamp hashes `build.gradle`, so it comes after the bump; the traced suite outlasts one harness process, so run it in slices ([NATIVE-IMAGE-GRAALVM §5.2](../../../docs/NATIVE-IMAGE-GRAALVM.md#capture-slices)). Commit the metadata and `cli/native-capture-stamp.txt`.
+3. Run `scripts/release-perf-gate.sh --fresh` on a near-idle machine (`uptime` first, nothing else running). It writes a `perf-results/` record; commit that too.
+4. Run `scripts/update-code-statistics.sh --artifact all`.
+5. Commit, then push `main`, but only once the owner has asked for the release, since a push burns CI minutes.
 
 ## Publish
 

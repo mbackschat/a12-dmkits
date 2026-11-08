@@ -48,8 +48,8 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 | Step | Command (`scripts/run-typescript.sh release scripts/typescript/release.ts …`) | What it adds over the publishers |
 |---|---|---|
-| prepare | `scripts/bump-version.sh X.Y.Z`, changelog entries, `scripts/release-perf-gate.sh --fresh` on an idle machine and the `perf-results/` record it writes, `scripts/update-code-statistics.sh --artifact all`; commit and push | — (judgment and measurement stay manual) |
-| `preflight X.Y.Z` | refuses every problem at once: version, clean pushed `main`, GitHub email, the three changelogs, tags absent or at HEAD, measurement currency, sealed performance evidence; then runs the gap, statistics and performance-receipt checks | the cross-artifact view |
+| prepare | `scripts/bump-version.sh X.Y.Z`, changelog entries, then `scripts/capture-native-config.sh` (its stamp hashes `build.gradle`, so after the bump), `scripts/release-perf-gate.sh --fresh` on an idle machine and the `perf-results/` record it writes, `scripts/update-code-statistics.sh --artifact all`; commit and push | — (judgment and measurement stay manual) |
+| `preflight X.Y.Z` | refuses every problem at once: version, clean pushed `main`, GitHub email, the three changelogs, tags absent or at HEAD, measurement currency, sealed performance evidence; then runs the native capture stamp, gap, statistics and performance-receipt checks | the cross-artifact view |
 | `tag X.Y.Z` | preflight, then `vX.Y.Z`, `interpreter-vX.Y.Z` and `consistency-vX.Y.Z` at HEAD, pushed atomically | one source commit for all three |
 | `stage X.Y.Z` | interpreter (`:interpreter:check`, qualify, stage), checker (qualify, stage), dmtool (stage); skips what is already published | — |
 | review | the three drafts, and dmtool's public native build | — |

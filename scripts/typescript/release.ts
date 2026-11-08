@@ -108,7 +108,7 @@ export function freezeChangelog(text: string, version: string, carryPerformance:
 
 // ---------------------------------------------------------------------------------------------------------------
 
-function run(root: string, command: string, args: string[]): void {
+function run(root: string, command: string, args: readonly string[]): void {
     console.log(`\n$ ${[command, ...args].join(' ')}`);
     const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' });
     if (result.status !== 0) throw new Error(`${command} failed (exit ${result.status ?? result.signal})`);
@@ -144,6 +144,17 @@ function changelogs(root: string): Changelogs {
     return { plugin: text('plugin/CHANGELOG.md'), interpreter: text('interpreter/CHANGELOG.md'), checker: text('consistency/public-release/CHANGELOG.md') };
 }
 
+/**
+ * The checks preflight runs once the cheap refusals pass, cheapest first. The native capture stamp is among them
+ * because stage's native gate is its only other check, and that runs after the tags are pushed.
+ */
+export const PREFLIGHT_GATES: readonly (readonly [string, readonly string[]])[] = [
+    ['./build.sh', ['--console=plain', '--quiet', ':cli:verifyNativeCaptureStamp']],
+    ['./scripts/check-release-gaps.sh', []],
+    ['./scripts/update-code-statistics.sh', ['--check', '--artifact', 'all']],
+    ['./scripts/release-perf-gate.sh', []],
+];
+
 /** Every refusal that needs no build, collected so one run names them all. */
 function preflight(root: string, version: string): void {
     const problems: string[] = [];
@@ -162,9 +173,7 @@ function preflight(root: string, version: string): void {
     const evidence = process.env.RK_RELEASE_PERF_EVIDENCE ?? resolve(root, 'build/release-perf-evidence');
     if (!existsSync(evidence)) problems.push('no sealed release performance evidence; run scripts/release-perf-gate.sh --fresh on an idle machine');
     if (problems.length) throw new Error(`release ${version} preflight refused:\n  - ${problems.join('\n  - ')}`);
-    run(root, './scripts/check-release-gaps.sh', []);
-    run(root, './scripts/update-code-statistics.sh', ['--check', '--artifact', 'all']);
-    run(root, './scripts/release-perf-gate.sh', []);
+    for (const [command, args] of PREFLIGHT_GATES) run(root, command, args);
     console.log(`\npreflight passed for ${version} at ${head}`);
 }
 

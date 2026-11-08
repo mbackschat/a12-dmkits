@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { changelogProblems, freezeChangelog, plan, rootVersion, sourceTag, tagProblems } from './release.ts';
+import { PREFLIGHT_GATES, changelogProblems, freezeChangelog, plan, rootVersion, sourceTag, tagProblems } from './release.ts';
 import type { Component, ReleaseState } from './release.ts';
 
 const states = (interpreter: ReleaseState, checker: ReleaseState, dmtool: ReleaseState): Record<Component, ReleaseState> =>
@@ -77,4 +77,10 @@ test('dmtool go-live refuses before its flip while a library release is unpublis
         const check = goLive.indexOf(mirror);
         assert.ok(check >= 0 && check < flip, `${mirror} is not checked before dmtool goes live`);
     }
+});
+
+// The capture stamp hashes build.gradle, so the version bump always stales it; checked only by stage's native
+// gate, a stale capture would surface after the tags are pushed, and its fix would move them.
+test('preflight verifies the native capture stamp before anything is tagged', () => {
+    assert.ok(PREFLIGHT_GATES.some(([, args]) => args.includes(':cli:verifyNativeCaptureStamp')));
 });
