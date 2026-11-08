@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 - **`model eval` and `rule eval` report each message's possibly-causing entities** (`possiblyCausing`), in A12's groups.
 - **Change notes.** `meta --change-note` and `--remove-change-note` set or remove A12's note on an element.
 - **A computation's `errorCode`** in `computation add` and `computation modify`, read back by `computation read`.
+- **`model describe` shows each field's `required` flag and `typedef`**, and points to `model report` for the rules.
 - **`field modify` and `typedef modify` warn when they drop config.** A spec carrying a type replaces the whole per-kind config, so each key it left out and lost is reported as `RK_MODIFY_REMOVES_CONFIG` with its old value; `schema typedef modify` now describes the modify contract.
 
 ### Changed

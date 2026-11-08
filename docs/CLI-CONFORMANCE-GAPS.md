@@ -14,17 +14,7 @@
 
 ## 1. Open
 
-### CG30 — model describe omits rules, required flags and the field-to-typedef link <a id="cg30"></a>
-
-`model describe` lists fields with their kind, groups and locales, but no rules, no `required` flag and no typedef behind a typed field, so an agent orienting on a model calls `field read` per field and `rule read` to see them. Measured on the 2026-11-08 probes of tasks 08 and 10, where both tiers raised it independently ([task 08](../probe/reports/2026-11-08-08-booking-date-ranges.md), [task 10](../probe/reports/2026-11-08-10-typedefs-attachment-multiselect.md)); the cost is extra calls, not a wrong result.
-
-*Blocks: nothing. Closes when `describe` carries those three facts, or its help names the reads that do.*
-
-### CG29 — MVK_INVALID_ENTITY's corrective misses an unquoted constant read as a field name <a id="cg29"></a>
-
-A function argument that should be a quoted constant is resolved as a field name when unquoted: `[PickupTime] < Time(9)` is rejected `MVK_INVALID_ENTITY`, whose corrective tells the author to write an absolute path, while the fix is `Time("9")` (both measured with `rule check`, 2026-11-08). The agent in the [task 08 probe](../probe/reports/2026-11-08-08-booking-date-ranges.md) concluded `Time` did not exist and fell back to a string literal.
-
-*Blocks: nothing. Closes when the enricher recognizes an unresolved entity that is a bare number or other constant and names quoting as the corrective.*
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

@@ -5,9 +5,12 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import io.github.mbackschat.a12.dm.core.PossibleCauseFilter;
 import io.github.mbackschat.a12.dm.cli.rule.PossibleCauseSpec;
@@ -17,6 +20,7 @@ import io.github.mbackschat.a12.dm.cli.criterion.CriterionSpec;
 import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
@@ -45,13 +49,7 @@ public final class ReadPayloads {
         data.put("field", field);
         data.put("kind", doc.fieldKind(field).orElseThrow(
                 () -> new IllegalArgumentException("no field '" + field + "' in the model")));
-        doc.requiredness(field).ifPresent(requiredness -> {
-            switch (requiredness) {
-                case OPTIONAL -> data.put("required", false);
-                case REQUIRED -> data.put("required", true);
-                case REQUIRED_IF_PARENT_PRESENT -> data.put("required", "ifParentPresent");
-            }
-        });
+        doc.requiredness(field).ifPresent(requiredness -> data.set("required", requiredValue(requiredness)));
         doc.labels(field).ifPresent(labels -> putIfNotEmpty(data, "label", labels));
         putIfNotEmpty(data, "helperText", doc.helperText(field));
         putIfNotEmpty(data, "internalDescription", doc.internalDescription(field));
@@ -63,6 +61,15 @@ public final class ReadPayloads {
                     .ifPresent(config -> data.set("resolvedType", configNode(config)));
         }
         return data;
+    }
+
+    /** A requiredness in the spec's own {@code required} spelling: {@code true}, {@code false} or {@code "ifParentPresent"}. */
+    public static JsonNode requiredValue(Requiredness requiredness) {
+        return switch (requiredness) {
+            case OPTIONAL -> BooleanNode.FALSE;
+            case REQUIRED -> BooleanNode.TRUE;
+            case REQUIRED_IF_PARENT_PRESENT -> TextNode.valueOf("ifParentPresent");
+        };
     }
 
     /** The full {@code group read} data for one group ({@code doc} must contain {@code group}). */

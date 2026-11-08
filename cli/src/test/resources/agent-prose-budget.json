@@ -7,7 +7,7 @@
     "compute-doc.schema.json": 3051,
     "criterion-add.schema.json": 1636,
     "criterion-read.schema.json": 810,
-    "describe.schema.json": 1073,
+    "describe.schema.json": 1269,
     "diagnostic.schema.json": 2192,
     "document-instance.schema.json": 2147,
     "eval-doc.schema.json": 5086,
@@ -153,8 +153,8 @@
     "StructuralKernelFix": 25091
   },
   "surfaces": {
-    "manifest": 19702,
-    "manifest --full": 218224,
+    "manifest": 19777,
+    "manifest --full": 218299,
     "skill/SKILL.md": 27633
   }
 }
