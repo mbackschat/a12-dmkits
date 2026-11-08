@@ -29,8 +29,8 @@ echo "build/" > "$REPO/.gitignore"
 git -C "$REPO" add -A
 git -C "$REPO" -c core.hooksPath=/dev/null commit -qm seed
 
-# Every doc-driven lane the hook demands evidence from, in ONE place: the hook's list grew from two to four
-# on 2026-09-03 and every fabrication site below has to move with it, so a second literal copy would let the
+# Every doc-driven lane the hook demands evidence from, in ONE place: when the hook's list changes, every
+# fabrication site below has to move with it, so a second literal copy would let the
 # positive controls pass against a stale idea of the contract.
 fabricate_guard_evidence() {
   local d
@@ -113,7 +113,7 @@ for doc in CLAUDE.md scripts/README.md docs/nested/deep.md; do
 done
 
 # 5a. A corrective's source triggers: DiagnosticProseGuardTest holds RkCode's and StructuralKernelFix's prose to
-#     its budget, and the second file was outside the trigger set when that guard landed (2026-11-06).
+#     its budget, so both files must be in the trigger set.
 rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
 mkdir -p "$REPO/rulekit/src/main/java"
 echo 'final class StructuralKernelFix {}' > "$REPO/rulekit/src/main/java/StructuralKernelFix.java"
@@ -124,8 +124,8 @@ fix_out="$(commit_expecting_refusal "fix: reword a corrective")"
 git -C "$REPO" commit -qm "fix: reword a corrective" --no-verify -q
 
 # 5b. A performance run record triggers too: PerformanceRecordShapeGuardTest bounds the committed runs per
-#     environment, and a three-run anchor refresh committed 32 against a bound of 30 because no staged record
-#     demanded the guard (2026-11-05, red only in CI).
+#     environment, and unless a staged record demands the guard, a refresh can commit past the bound with only CI
+#     noticing.
 rm -rf "$REPO/build/test-results" "$REPO/cli/build/test-results"
 mkdir -p "$REPO/perf-results/darwin-aarch64"
 echo '{"kind":"run"}' > "$REPO/perf-results/darwin-aarch64/2026-11-05T000000Z.jsonl"
@@ -137,8 +137,8 @@ perf_out="$(commit_expecting_refusal "perf: keep a run")"
 fabricate_guard_evidence
 git -C "$REPO" commit -qm "perf: keep a run" || fail "green doc evidence did not satisfy a staged run record"
 
-# 6. RED doc evidence is not evidence. Until 2026-09-24 the check read freshness alone, so a guard that ran red
-#    after the change satisfied it exactly as a green run did.
+# 6. RED doc evidence is not evidence. Under freshness alone, a guard that ran red after the change would satisfy
+#    the check exactly as a green run does.
 echo "red doc" > "$REPO/docs/red.md"
 git -C "$REPO" add -A
 fabricate_guard_evidence

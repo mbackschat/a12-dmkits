@@ -1,7 +1,6 @@
 // Node discovery, shared because a PERFORMANCE lane needs a pinned runtime and a functional one does not.
 //
-// This was a closure in `consistency/build.gradle` until 2026-09-17, when `:adapter` acquired the second
-// consumer — H5's cold boundary on plain Node. Two copies of a tool resolver drift on the machine-specific half
+// Its consumers are `consistency/build.gradle` and `:adapter`, for H5's cold boundary on plain Node. Two copies of a tool resolver drift on the machine-specific half
 // (the nvm fallback), which is the half nobody notices is wrong until a different machine runs it.
 //
 // The added capability is `requiredMajor`. Without it the resolver returns the NEWEST installed Node, which is

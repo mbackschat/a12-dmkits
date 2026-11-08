@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const { checkClaims } = require("./handback-check.ts");
 
 /**
- * The claims under test are the two that actually shipped a defect on 2026-09-07, plus the allow-side cases
+ * The claims under test are the two that have shipped a defect, plus the allow-side cases
  * that decide whether a checker like this survives contact. A pre-send gate that flags honest paragraphs gets
  * skipped, and a skipped gate is worse than none — so every trigger is pinned in both directions.
  */

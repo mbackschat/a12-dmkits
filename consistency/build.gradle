@@ -11,9 +11,7 @@ plugins {
     id 'org.jetbrains.kotlin.multiplatform'
     // Applied HERE, not inherited, for the reason `:predicates` records: without it this project has no
     // `publishing` extension and the Groovy DSL resolves `publishing { }` against the ROOT project instead of
-    // failing. Measured again on 2026-09-17 while adding this module's publication — the block silently
-    // reconfigured root, and `verifyPublishingIsDeclaredLocally` did not catch it, because the words
-    // "maven-publish" in the explanatory comment satisfied its string scan. Both were fixed together.
+    // failing; `verifyPublishingIsDeclaredLocally` refuses that shape.
     id 'maven-publish'
 }
 
@@ -38,10 +36,9 @@ kotlin {
                 }
             }
         }
-        // The BROWSER is a target H5/F require and this module did not declare until 2026-09-17, which is
-        // why F's "run the corpus through Java, packed Node and browser" could not have run its third arm:
-        // a target the module does not compile for cannot be replayed against
-        // (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser). Unlike `:interpreter`, whose
+        // The BROWSER is a target H5/F require: F's "run the corpus through Java, packed Node and browser" has
+        // a third arm only because the module compiles for it, and a target it does not compile for cannot be
+        // replayed against (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser). Unlike `:interpreter`, whose
         // `jsBrowserTest` is disabled because its commonTest imports `node:*` host probes, this module's
         // sources touch no host API at all, so the shared suite COULD run in Karma here — and deliberately
         // does not. Measured 2026-09-17: enabling `jsBrowserTest` grows the committed `gradle/kotlin-js-store/
@@ -116,12 +113,10 @@ def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
     // covers them, NOT that this one does — a `nativeMain` would still be refused, because no instrument
     // reaches it.
     //
-    // Corrected 2026-09-17: this said the forbidden set was "unreachable there by construction", because the
-    // kernel, `:interpreter` and Groovy are JVM artifacts that "cannot sit on a Kotlin/JS compile classpath".
-    // That is false of `:interpreter`, which is Kotlin Multiplatform and publishes a JS target — and it was
-    // measured false: `implementation project(':interpreter')` on `jsMain` resolved onto
-    // `jsRuntimeClasspath` with both guards green, because a project edge carries no module coordinate for a
-    // group filter to see. The dependency guard is closed over project paths as of the same day.
+    // The forbidden set is NOT unreachable on JS by construction: `:interpreter` is Kotlin Multiplatform and
+    // publishes a JS target, and `implementation project(':interpreter')` on `jsMain` resolved onto
+    // `jsRuntimeClasspath` with both guards green (measured 2026-09-17), because a project edge carries no
+    // module coordinate for a group filter to see. The dependency guard is therefore closed over project paths.
     def classpathCoveredSourceSets = ['jsMain', 'jsTest']
     def coveredSourceSets = jdepsCoveredSourceSets + classpathCoveredSourceSets
     def classRoots = providers.provider {
@@ -639,11 +634,9 @@ def generateCheckerIdentity = tasks.register('generateCheckerIdentity') {
 kotlin.sourceSets.commonMain.kotlin.srcDir(files(generatedIdentityDir).builtBy(generateCheckerIdentity))
 
 // Published for the reason `:predicates` is, and it is the same defect the same one line of reasoning caught
-// there: a shipped POM must not name a coordinate nothing publishes. Measured 2026-09-17 — this module had no
-// `maven-publish` block at all, while `dmkits-consistency-gate` and `dmkits-interpreter-preflight` both
-// declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at COMPILE scope in their generated POMs, so
-// a Maven consumer of either façade could not resolve the very types their public API returns. Both expose
-// those types on purpose (`PublicApiGuardTest.API_SCOPED_PUBLICATIONS` records why: restating the checker's
+// there: a shipped POM must not name a coordinate nothing publishes. `dmkits-consistency-gate` declares this
+// module at COMPILE scope in its generated POM, so unless it publishes, a Maven consumer of that façade cannot
+// resolve the very types its public API returns. The façade exposes those types on purpose (`PublicApiGuardTest.API_SCOPED_PUBLICATIONS` records why: restating the checker's
 // report in a second shape is worse than naming its type), so the fix is to publish the module, not to hide it.
 //
 // Coordinates follow `:interpreter`'s and `:predicates`' `dm-*` convention rather than the Java kits'
@@ -698,8 +691,8 @@ def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 // spelling fails at configuration time (measured on the 2.2 → 2.4 bump, 2026-09-20 — this module failed
 // first, because it is the one `:interpreter`'s own migration would not have covered).
 //
-// This module became a PUBLISHED artifact on 2026-09-17 (`dm-consistency`), and its report types already sit
-// on two published Java APIs whose own goldens name them — so a change here moves those two surfaces with
+// This module is a PUBLISHED artifact (`dm-consistency`), and its report types sit on published Java APIs
+// whose own goldens name them — so a change here moves those two surfaces with
 // nothing recording that the checker was the cause. Deliberately UNFILTERED: the whole module is either
 // contract or accidentally public, and a dump that hides the difference answers neither question.
 def consistencyAbiValidation = kotlin.abiValidation
@@ -732,19 +725,18 @@ def stageConsistencyNpmPackage = tasks.register('stageConsistencyNpmPackage', Sy
     group = 'build'
     description = 'Stage exactly what the npm package ships, with a hand-written publication contract.'
     // Both distribution tasks declare the shared productionLibrary directory, and a full build schedules
-    // both, so every producer must precede this consumer under Gradle 9. The browser one became a producer
-    // when `browser()` was declared (2026-09-17); missing it is a race, not a missing file.
+    // both, so every producer must precede this consumer under Gradle 9. The browser one is a producer
+    // because `browser()` is declared; missing it is a race, not a missing file.
     dependsOn tasks.named('jsNodeProductionLibraryDistribution')
     dependsOn tasks.named('jsBrowserProductionLibraryDistribution')
     from(consistencyJsDistribution) {
         include '*.mjs'
         include '*.mjs.map'
         // `.d.mts`, not `.d.ts`: Kotlin/JS 2.4 names the declaration file after its ES-module output, where
-        // 2.2 emitted `.d.ts`. That is the same rename the PR3 cold review reasoned through for `:interpreter`
-        // on 2026-09-20 and did not carry to this module. A Copy `include` that stops matching is silent, and
-        // these distributions copy rather than sync, so `build/dist` kept the 2.2 file and every local build
-        // still staged one — the package shipped with no declarations at all and only a consumer reading the
-        // file by name noticed, 38 billable CI minutes in (2026-09-21).
+        // 2.2 emitted `.d.ts`; `:interpreter` follows the same rename. A Copy `include` that stops matching is
+        // silent, and these distributions copy rather than sync, so a stale `build/dist` keeps a local build
+        // staging an old declaration file while a clean build ships the package with none — which only a
+        // consumer reading the file by name notices.
         include 'a12-consistency.d.mts'
     }
     from(file('README.md'))
@@ -911,8 +903,7 @@ tasks.register('consistencyJvmClosureReport') {
 tasks.named('check') { dependsOn 'consistencyJvmClosureReport' }
 
 // The JVM half of the delivery boundary, ratified per-number by the owner on 2026-09-18 through IF137's six
-// points — the sixth being that ratification itself, which is why the collector above shipped bar-less for a
-// day (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5-k's collector landed").
+// points (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5-k's collector landed").
 //
 // It binds the module's OWN JAR and deliberately not the resolved closure. That is the decision the
 // measurement forced rather than a default: at 3 638 410 closure bytes against 1 188 850 of our own, a
@@ -980,12 +971,11 @@ tasks.register('verifyCheckerArtifactIdentity') {
     def jvmArtifact = tasks.named('jvmJar').flatMap { it.archiveFile }
     def stagedManifest = consistencyNpmStageDir.map { it.file('package.json') }
     doLast {
-        // The STAGED manifest, which is the one that ships. It read the Kotlin distribution's generated
-        // `dist/js/productionLibrary/package.json` until 2026-09-18 — a file `stageConsistencyNpmPackage`
-        // exists to REPLACE, carrying a `typescript` devDependency, no `license` and no `exports`. Both
-        // happened to spell one name and one version, so the check passed while verifying a file no consumer
-        // receives: the shipped manifest is written by hand below, and a wrong literal there would have
-        // shipped with every guard green. Read what ships.
+        // The STAGED manifest, which is the one that ships — never the Kotlin distribution's generated
+        // `dist/js/productionLibrary/package.json`, which `stageConsistencyNpmPackage` exists to REPLACE (it
+        // carries a `typescript` devDependency, no `license` and no `exports`). Both spell one name and one
+        // version, so checking the generated file passes while a wrong literal in the hand-written manifest
+        // ships. Read what ships.
         def manifest = stagedManifest.get().asFile
         if (!manifest.file) {
             throw new GradleException("no staged manifest at $manifest — the npm staging did not run")
@@ -1120,7 +1110,7 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
         }
         // A modern ESM consumer and every bundler resolve through `exports` in PREFERENCE to `main`/`types`,
         // so the two fields above can both be right while the package is unresolvable. Staged by hand below,
-        // and until 2026-09-18 read by nothing.
+        // so this is its only reader.
         if (packaged.exports?.get('.')?.import != './a12-consistency.mjs' ||
                 packaged.exports?.get('.')?.types != './a12-consistency.d.mts') {
             throw new GradleException("the published `exports` map does not resolve this package: " +
@@ -1130,8 +1120,8 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
 
         // The BROWSER claim, on the shipped JavaScript rather than on the dependency graph. H2 promises a
         // bundle a browser consumer takes unchanged, and `docs/CONSISTENCY-API.md` states it as "names no
-        // host API at all" — an invariant that was true and held by nothing until 2026-09-18, since every
-        // other arm here reads file NAMES or the manifest. A Kotlin/JS emit change or a new `js()`-target
+        // host API at all" — an invariant no other arm here can hold, since every other arm reads file NAMES
+        // or the manifest. A Kotlin/JS emit change or a new `js()`-target
         // dependency is exactly what would introduce one, and neither moves a file name.
         // The bare form needs a pattern rather than a substring, and it is the one a bundler actually
         // produces: rewriting `node:fs` to `fs` is a routine interop step, and the result is just as

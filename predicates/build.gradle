@@ -1,10 +1,9 @@
 // The shared-predicate LEAF (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN row 5a; C1's re-open trigger).
 //
-// One A12 law, one live statement. Before this module the reserved-namespace law existed three times — in
-// `Rule.Builder`, in `Computation.Builder` and in the portable checker — and had already drifted: the
-// computation copy was missing entirely until 2026-09-12, because `MVK_RULE_NAME_INVALID` reads as a rule's
-// law, and when it arrived it came as a bare `require` without the code its sibling carries. Three copies of
-// one comparison is the duplication C1 exists to collapse, and this is the mechanism.
+// One A12 law, one live statement. `Rule.Builder`, `Computation.Builder` and the portable checker all need the
+// reserved-namespace law, and separate copies drift: `MVK_RULE_NAME_INVALID` reads as a rule's law, so a
+// computation copy is easily missed, or written as a bare `require` without the code its sibling carries.
+// Three copies of one comparison is the duplication C1 exists to collapse, and this is the mechanism.
 //
 // It is Kotlin Multiplatform because both consumers must reach it: `:consistency` compiles to JVM and JS, so
 // a JVM-only leaf would serve the Java kits and not the checker — which is the whole reason C1 was blocked on

@@ -119,8 +119,8 @@ test("the turn feeder sends the next turn only after the previous turn's result"
 });
 
 /**
- * A clean session has no allow rules, so whatever the OS sandbox does not cover is refused; on 2026-11-08 six
- * probe sessions ran with every dmtool call refused and still exited 0. A refusal is therefore an instrument
+ * A clean session has no allow rules, so whatever the OS sandbox does not cover is refused, and a session can run
+ * with every tool call refused and still exit 0. A refusal is therefore an instrument
  * failure that must surface, never a quiet turn of the measured agent.
  */
 test("a call the harness refused is reported, a failing tool call is not", (t: { after(f: () => void): void }) => {
@@ -150,8 +150,8 @@ test("a schema run expects the structured-output tool beside the requested ones"
 });
 
 /**
- * Concurrent sessions under the OS sandbox all get TMPDIR=/tmp/claude-<uid>, so on 2026-11-08 three eval
- * producers wrote `$TMPDIR/ops.json` within a second and one validated another's file. Each session therefore
+ * Concurrent sessions under the OS sandbox all get TMPDIR=/tmp/claude-<uid>, so one can read another's scratch
+ * file. Each session therefore
  * gets its own temp directory, which must also be writable.
  */
 test("every session gets a private, writable temp directory", () => {

@@ -46,7 +46,7 @@ export async function anonymousBytes(url: string): Promise<Buffer> {
 function digest(bytes: Buffer): string { return createHash('sha256').update(bytes).digest('hex'); }
 type Release = { draft: boolean; tag_name: string; assets: { id: number; name: string }[] };
 export function getRelease(root: string, version: string): Release | undefined {
-    // Tag lookup returned 404 for the initial draft; authenticated enumeration returned it (2026-11-01).
+    // The tag endpoint answers 404 for a draft; only the authenticated enumeration lists drafts.
     const pages = JSON.parse(gh(root, ['api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp'])) as Release[][];
     return pages.flat().find(release => release.tag_name === `v${version}`);
 }
@@ -141,7 +141,7 @@ export async function deployPagesTag(root: string, tag: string, mirrorSha: strin
     if (policy?.custom_branch_policies) {
         const endpoint = `${environment}/deployment-branch-policies`;
         const policies = api(root, endpoint) as { branch_policies: { name: string; type: string }[] };
-        // New Pages sites allowed only main in the first deployment (2026-11-01); authorize this immutable tag without changing other protections.
+        // A new Pages environment lets only `main` deploy; authorize this immutable tag without changing other protections.
         if (!policies.branch_policies.some(p => p.name === tag && p.type === 'tag')) {
             gh(root, ['api', '--method', 'POST', endpoint, '-f', `name=${tag}`, '-f', 'type=tag']);
         }

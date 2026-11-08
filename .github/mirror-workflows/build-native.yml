@@ -65,7 +65,7 @@ jobs:
             25.0.4
 
       # The 2026.06-ext1 kernel bootstrap refuses to build below Node 24, and the hosted image's PATH carries
-      # Node 22 (mirror run 42148016416, 2026-11-06). Same pin as main CI and the nightly; NodeRuntimePinGuardTest.
+      # Node 22 (mirror run 42148016416). Same pin as main CI and the nightly; NodeRuntimePinGuardTest.
       - name: Set up Node for the kernel bootstrap
         uses: actions/setup-node@v6
         with:

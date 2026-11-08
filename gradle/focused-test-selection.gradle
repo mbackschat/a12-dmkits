@@ -1,9 +1,8 @@
 // --tests filters a Test task, never its prerequisites. Graph readiness is the last point where all
-// command-line filters are known and no unrelated release/doc suite has started (2026-09-08 incident).
+// command-line filters are known and no unrelated release/doc suite has started.
 gradle.taskGraph.whenReady { graph ->
     // Gradle binds --tests to the task just before it, so `:test :cli:test --tests X` filters :cli:test alone
-    // and runs the whole root suite beside it. That cost every filtered root run of one session the full suite,
-    // unnoticed because the targeted classes passed among the rest (2026-10-20). A task its build script bounds
+    // and runs the whole root suite beside it, unnoticed because the targeted classes pass among the rest. A task its build script bounds
     // with its own filter or JUnit tags (`:adapter:perfGateTest`) is a lane meant to run whole, so only a task
     // with no bound at all is refused. A relative path resolves against the root, where `build.sh` invokes;
     // an abbreviated task name goes unmatched, which can only miss a refusal, never invent one.

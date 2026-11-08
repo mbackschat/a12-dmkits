@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # contract-consumers.sh — list every committed file that READS dmtool's output.
 #
-# Why this exists: a change to the published result contract has consumers well outside Java. Nesting the
-# verb payloads under `data` (2026-08-01) was swept through the 78 Java call sites and NOT through the
-# markdown, shell and JS ones — four demo `jq` filters silently went stale (two of them capturing a `jq`
-# error as their expected output) and the eval harness kept telling its judging agents that `batch` returns
-# a bare array. The consumer set was enumerated from memory, which is exactly what failed.
+# Why this exists: a change to the published result contract has consumers well outside Java — demo `jq`
+# filters, shell scripts, JS, and the eval harness's prompts — and a sweep through the Java call sites alone
+# leaves those silently stale, a stale `jq` filter even capturing its own error as the expected output. An
+# enumeration from memory misses them; this lists them.
 #
 # So the set is DERIVED here rather than listed anywhere: run this before changing the envelope, and again
 # after, and diff your work against it. `ResultEnvelopeFrameTripwireTest` fails the build when the envelope's

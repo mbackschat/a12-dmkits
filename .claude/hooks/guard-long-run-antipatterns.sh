@@ -28,8 +28,8 @@ fi
 #     loop-gate anti-pattern) and a bare `pgrep -f` still do.
 #
 #     The SECOND pattern closes G80: `while pgrep -f x; do … done` is the canonical spelling of the very
-#     anti-pattern this check names, and the anchor list above matches none of `while`/`until`, so it slipped
-#     through from the check's first day until 2026-09-07. Only those two keywords are added, deliberately:
+#     anti-pattern this check names, and the anchor list above matched none of `while`/`until`, so it slipped
+#     through. Only those two keywords are added, deliberately:
 #     `do`, `then` and `else` would also anchor a command position, but they occur in ordinary prose right
 #     before this string ("…and then pgrep -f is unreliable"), and a guard that trips on a commit message
 #     explaining the guard is how the mention-safety in the paragraph above gets thrown away.

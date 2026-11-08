@@ -60,9 +60,8 @@ if [ "$#" -eq 0 ]; then
     #
     # Sorted on the BASENAME, not the path. Sorting whole paths puts the environment DIRECTORY ahead of the stamp,
     # so with more than one recorded environment "newest" degenerates to "whichever directory name sorts last" —
-    # `perf-results/linux-amd64-ci/…` beats every `perf-results/darwin-aarch64/…` however old it is. Measured
-    # 2026-08-13: a fresh local gate run was ignored and the refresh silently rewrote the LINUX block instead,
-    # downgrading a committed 2-run median to a 1-run block measured on different silicon.
+    # `perf-results/linux-amd64-ci/…` beats every `perf-results/darwin-aarch64/…` however old it is, so a fresh
+    # local gate run would be ignored and the refresh would rewrite another environment's block instead.
     # RESULTS_DIR is overridable for the same reason ANCHOR_FILE is: this script `cd`s to the repo root, so the
     # default-input path cannot otherwise be executed by a test — and it was the one path with no case, which is
     # where the path-sort defect survived.
@@ -133,8 +132,8 @@ for input_path in inputs:
     # machine swap rather than as a block that was authored wrong. Re-measuring cannot fix that one — the probe has
     # to learn the machine — so the two say different things.
     # A HOSTED runner class does not have a machine, and pretending otherwise is unmaintainable. The provider
-    # hands out whatever CPU it likes per job — three consecutive dispatches on 2026-08-16 landed on three
-    # different models while the committed block named a fourth — and the fleet is not enumerable.
+    # hands out whatever CPU it likes per job — consecutive dispatches can each land on a different model — and
+    # the fleet is not enumerable.
     # Requiring one machine there means a refresh can only proceed after enough dispatches happen to collide on
     # one model, which is a lottery that gets worse as the provider's fleet grows. So for a hosted class the
     # machine is NOT required and NOT compared: the block is a bar over the runner CLASS, exactly as the gated
@@ -154,8 +153,7 @@ for input_path in inputs:
         )
     # A CONTENDED capture is not a measurement, and the per-key median below does not rescue it. That median
     # bounds ONE contended run among several; a capture SESSION on a busy machine inflates every input alike, so
-    # the median is inflated too. Load is recorded on every run record and, until 2026-09-19, compared nowhere —
-    # the "machine to itself" rule lived in prose and in whoever remembered it. Measured over the 30 committed
+    # the median is inflated too. Load is recorded on every run record, so it is compared here. Measured over the 30 committed
     # darwin runs: the median run sits at 0.54 runnable threads per core, and six sit above 1.00 with the worst
     # at 3.34. Above 1.00 there are more runnable threads than cores by definition, so the run was competing for
     # the CPU it was measuring. HOSTED classes are exempt because the bar means something different there: all
@@ -165,8 +163,7 @@ for input_path in inputs:
     # current gate run writes it, so only imported history lacks it.
     # The refusal guards what a refresh WRITES. `show` writes nothing, so there it is only noted: refusing
     # hid the diff and failed perf-report.sh, whose section 5 is this `show` and whose contract is to exit 0
-    # on a readable record. Measured 2026-09-26: the run committed in 1eec90e28 sits at 1.29 runnable threads
-    # per core, and the report failed on the live record.
+    # on a readable record.
     load, cores = header.get("loadAverage"), header.get("processors")
     if not hosted and load is not None and cores and load / cores > 1.0 \
             and not os.environ.get("ALLOW_CONTENDED"):
@@ -283,8 +280,8 @@ if missing and not os.environ.get("ALLOW_REMOVALS"):
 jdks = sorted({h.get("jdk") for h in headers if h.get("jdk")})
 # The VM FAMILY beside the version, because the version alone cannot separate the runtimes: Oracle GraalVM 21
 # reports 21.0.12 and Homebrew OpenJDK reports 21.0.12.1, differing by coincidence rather than by family. The
-# run record gained this field on 2026-08-23; the BLOCK is the artifact a reader actually consults, and it was
-# reading the block's bare `21.0.12` that produced the "GraalVM-era" misreading recorded in the results log.
+# BLOCK is the artifact a reader actually consults, so it carries the family too; a bare version invites reading
+# one runtime as another.
 jdk_families = sorted({h.get("jdkFamily") for h in headers if h.get("jdkFamily")})
 hosted_class = str(environment).endswith("-ci")
 anchor["environments"][environment] = {

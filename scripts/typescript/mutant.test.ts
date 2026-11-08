@@ -80,8 +80,8 @@ test("each run that ran nothing is no verdict, whatever the build's exit said", 
 });
 
 test("a verdict reads a log whose failure printed one enormous line in linear time", () => {
-  // A failing map assertion printed a 3.2-million-character line on 2026-10-29, and an unanchored routing scan
-  // hung the batch on it for hours. This line is long enough for a quadratic scan to take seconds.
+  // A failing map assertion can print a line of millions of characters, on which an unanchored routing scan takes
+  // hours. This line is long enough for a quadratic scan to take seconds.
   const log = `FooTest > aMap() FAILED\n    expected: <{${"de=de, ".repeat(15_000)}}>\nBUILD FAILED`;
   const started = performance.now();
   assert.equal(judge(false, log, [RED]).verdict, "killed");

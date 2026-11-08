@@ -4,10 +4,9 @@
 #
 # Why this exists: assigning an id by hand needs a word-bounded search over docs, src AND git
 # history, because a shipped row is DELETED from its ledger — so the live rows do not show which
-# ids are taken. Reading the rows alone hands you an id that is in use. That happened on
-# 2026-08-29: `CG16` was minted on top of a live id cited from ~25 sites, because the `IG16`
-# substring hides a bare-`CG16` collision from a naive grep and nothing resolves an id back to a
-# row. The word-boundary handling below is the whole point of the script.
+# ids are taken. Reading the rows alone hands you an id that is in use, and a naive grep misses a
+# bare id that is a substring of a longer one (`G16` inside `IG16`), while nothing resolves an id
+# back to a row. The word-boundary handling below is the whole point of the script.
 #
 # Usage:  scripts/gap.sh <FAMILY> "<title>"
 #         scripts/gap.sh --next <FAMILY>     # print the next free id and exit

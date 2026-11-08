@@ -8,10 +8,9 @@ const { renderBatch, verdictOfOp } = require("./probe-verdicts.ts");
  * never render as the same shape of line. A REFUSED request establishes nothing about the model, a REJECTED
  * subject was read and judged, and an ERROR produced no envelope at all.
  *
- * <p>The fixtures are shaped after envelopes the tool emitted on 2026-09-04 — the refusal is the one a session
- * misread four times — but they are NOT byte-verbatim: `REFUSED_CHILD.fix` still carries the generic corrective
- * that the next commit replaced, which is why this note says "shaped after" rather than "verbatim". A cold
- * review caught the original wording claiming otherwise. Nothing here asserts on `fix`.
+ * <p>The fixtures are shaped after real envelopes but are NOT byte-verbatim: `REFUSED_CHILD.fix` carries an
+ * older generic corrective, which is why this note says "shaped after" rather than "verbatim". Nothing here
+ * asserts on `fix`.
  */
 
 const REFUSED_CHILD = {

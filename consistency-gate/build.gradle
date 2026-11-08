@@ -14,9 +14,9 @@
 // Kernel-free, held by verifyConsistencyGatePurity over its compiled classes and by the root
 // verifyPublishedClasspathsAreKernelFree over what its POM resolves.
 //
-// ONE artifact carries both façades, and the cost is stated rather than hidden: the preflight lived in its own
-// `:interpreter-preflight` module until 2026-09-20 so that a dmkits caller would not carry the interpreter and
-// an interpreter consumer would not carry rulekit and modelkit. That POM hygiene is worth exactly what
+// ONE artifact carries both façades, and the cost is stated rather than hidden: a separate preflight module
+// would keep a dmkits caller from carrying the interpreter and an interpreter consumer from carrying rulekit
+// and modelkit. That POM hygiene is worth exactly what
 // publication is worth, and the dmkit developer wave is deferred (RELEASE-SPEC §1/§11), so today it buys
 // nothing and costs a second artifact, lint, API golden and CI lane for two source files. Re-split when the
 // wave ships and a real consumer starts paying the over-declaration.

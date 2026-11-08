@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto');
 // Binds each accepted poster's pixels to the exact prompt it was reviewed against. Schema 1 also fingerprinted
 // every production source so a kLOC label could not go stale; posters no longer print counts, versions or dates
 // outside dated evidence (INFOGRAPHICS.md, shared visual system), so that binding only blocked pushes on edits
-// the posters cannot show (2026-11-05: a comment-only change refused a push).
+// the posters cannot show, such as a comment-only change.
 type Artwork = { file: string; sha256: string; promptSha256: string };
 type Evidence = { schema: number; artwork: Artwork[] };
 const digest = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex');

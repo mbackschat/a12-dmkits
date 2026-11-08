@@ -2,13 +2,10 @@
  * Render a `dmtool batch` envelope as one verdict line per op, with a COLUMN PER CHANNEL so the three
  * things a probe can learn cannot be collapsed into one.
  *
- * Why this exists (measured 2026-09-04). A probing session hand-rolled the same
- * `[d.code for d in diagnostics]` projection eighteen times and, four of those times, read
- * `RK_INVALID_VALUE` as a kernel rejection of the MODEL when it was the CLI refusing an ARGUMENT — the
- * envelope's own summary said "--field must be an absolute path (e.g. /Group/Field), got: ../CustomerName".
- * The tool was never wrong; the instrument was, and it was wrong the same way each time because each
- * re-invention independently discarded the same fields. A doc note would not have helped: the fact is
- * already written in `batch.schema.json`, and the session had read it.
+ * Why this exists: a hand-rolled `[d.code for d in diagnostics]` projection discards the fields that
+ * separate a kernel rejection of the MODEL from the CLI refusing an ARGUMENT, so `RK_INVALID_VALUE` reads as
+ * the former when the envelope's own summary says "--field must be an absolute path". Every re-invention of
+ * that projection discards the same fields, and a doc note does not help: `batch.schema.json` already says it.
  *
  * The three channels, which that projection lost:
  *   - did the op RUN, and was the request accepted at all?   `outcome` / `ok`
@@ -83,12 +80,11 @@ function verdictOfOp(entry: OpResult): Verdict {
   const diagnostics = child.diagnostics ?? [];
   const verdict: Verdict["verdict"] = child.valid === true ? "VALID" : child.valid === false ? "INVALID" : "-";
 
-  // THE ENVELOPE'S OWN `outcome` DECIDES THE CHANNEL. A diagnostic's `source` may not override it: the first
-  // version tested `outcome === "refused" || diagnostics.some(source === "PRECHECK")`, and since a REJECTED
-  // subject also carries PRECHECK diagnostics, every spec-key rejection rendered as a refused request —
-  // collapsing the very distinction the module exists to draw, on the very input class it was written for
+  // THE ENVELOPE'S OWN `outcome` DECIDES THE CHANNEL. A diagnostic's `source` may not override it: a REJECTED
+  // subject also carries PRECHECK diagnostics, so testing `diagnostics.some(source === "PRECHECK")` would render
+  // every spec-key rejection as a refused request — collapsing the very distinction this module draws
   // (`rule check --field ../X` refuses the request, exit 2; `rule add`'s `field: ../X` rejects the subject,
-  // exit 1). Found by a cold review, 2026-09-04. `source` now only picks WHICH diagnostic to quote.
+  // exit 1). `source` only picks WHICH diagnostic to quote.
   const refusalSummary = (): string => {
     const first = diagnostics.find((d) => d.source === "PRECHECK") ?? diagnostics[0];
     const arg = first?.where?.arg ? `${first.where.arg}: ` : "";

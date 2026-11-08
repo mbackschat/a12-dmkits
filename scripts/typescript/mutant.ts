@@ -39,8 +39,8 @@ EXIT: 0 = killed (the control fired). 1 = SURVIVED (report it). 2 = no verdict. 
 /**
  * The lane that owns a file's tests, inferred from its module.
  *
- * `:adapter:test` was the unconditional default once, so a mutant planted in core/ or cli/ reported "matched no
- * test" and had to be relaunched (measured twice, 2026-09-04). Root `:test` owns every module without its own
+ * A fixed default lane misroutes: with `:adapter:test` as the default, a mutant planted in core/ or cli/ reports
+ * "matched no test" and has to be relaunched. Root `:test` owns every module without its own
  * test source set (core, rulekit, modelkit, edit), which is why it is the fallback rather than an error. A
  * JS-only source set is refused: a jvmTest lane never compiles it, so every test passes and the mutant reads
  * SURVIVED, and a Kotlin Multiplatform module has no plain `test` task at all (measured 2026-09-12).
@@ -67,8 +67,7 @@ function inferLane(file: string): { readonly lane: string } | Refusal {
  *
  * An absent anchor would silently not apply, and an unapplied mutant reports SURVIVED. An AMBIGUOUS one is the
  * same defect hiding better: the replacement takes the first occurrence, the mutation lands on a site nobody
- * meant, and SURVIVED reads as a finding about the test (measured 2026-09-18, a `forEach` anchor that matched
- * two indexes in one file). The refusal names every starting line, counted by offset because the second site
+ * meant, and SURVIVED reads as a finding about the test. The refusal names every starting line, counted by offset because the second site
  * is usually a prefix match that a line comparison misses.
  */
 function plant(text: string, old: string, replacement: string): { readonly text: string } | Refusal {
@@ -125,8 +124,7 @@ const isRed = (c: Counts) => c.failures > 0 || c.errors > 0;
  * A kill needs a FRESH FAILING RESULT, not merely a failed build. The shell version read every failed build as
  * killed, so a mutant that did not compile — or a prerequisite that broke — read as the control catching it,
  * the false verdict in the direction that confirms what the operator hoped. Each log signal below is a run that
- * ran nothing: a lane that is not a Test task rejects `--tests` while configuring (measured 2026-09-12, a review
- * packet naming `:consistency:check`); a filter that selects nothing prints Gradle's own phrase or the selection
+ * ran nothing: a lane that is not a Test task rejects `--tests` while configuring (measured 2026-09-12); a filter that selects nothing prints Gradle's own phrase or the selection
  * guard's; a dedicated task hosts the control and the build names it (measured 2026-09-04); and a Kotlin/JS lane
  * passes an empty selection silently (measured 2026-09-24), which the fresh-result requirement catches.
  */
@@ -194,8 +192,8 @@ function parseBatch(json: string): readonly Mutant[] | Refusal {
 
 /**
  * Put the original bytes back and PROVE they are back, because a restore nobody checks is how a mutant ships.
- * The comparison is against our own copy, never git: `git checkout --` to revert a mutant destroyed uncommitted
- * work three times in one session (2026-08-16), and git knows nothing about an untracked file.
+ * The comparison is against our own copy, never git: `git checkout --` to revert a mutant also destroys any
+ * uncommitted work in the file, and git knows nothing about an untracked file.
  */
 function restoreVerified(file: string, original: Buffer): void {
   fs.writeFileSync(file, original);
@@ -230,8 +228,7 @@ function preflight(mutant: Mutant, lane: string): string | undefined {
   }
   const planted = plant(fs.readFileSync(file, "utf8"), mutant.old, mutant.new);
   if ("refusal" in planted) return planted.refusal;
-  // A control that is ALREADY red reports every mutant killed, and the verdict reads as proof (measured
-  // 2026-09-25: an unfinished mirror test "killed" a mutant its green form let survive). The kills this tool
+  // A control that is ALREADY red reports every mutant killed, and the verdict reads as proof. The kills this tool
   // causes delete their own red files, so a red one still here is the operator's own last run.
   const matcher = resultFileMatcher(mutant.filter);
   const red = xmlFilesUnder(resultsDir(lane))
@@ -255,8 +252,8 @@ function runOne(mutant: Mutant, lane: string, logDir: string, index: number): Ou
   const started = Date.now();
   try {
     fs.writeFileSync(file, planted.text);
-    // Prove it landed by bytes, never `git diff`, which is silent for an untracked file and once reported
-    // every mutant in a just-created guard class unchanged (2026-09-13).
+    // Prove it landed by bytes, never `git diff`, which is silent for an untracked file and so would report every
+    // mutant in a just-created class as unchanged.
     if (fs.readFileSync(file).equals(original)) {
       return { verdict: "no-verdict", reason: "the file is unchanged after the edit" };
     }
@@ -355,8 +352,8 @@ if (require.main === module) {
   try {
     process.exitCode = main(process.argv.slice(2));
   } catch (error) {
-    // Any unplanned stop is no verdict, never the SURVIVED code: the shell version's first red-control probe
-    // aborted under `set -e` on every green control and reported each mutant as surviving unrun (2026-09-25).
+    // Any unplanned stop is no verdict, never the SURVIVED code: otherwise an abort reports a mutant as surviving
+    // when it never ran.
     console.error(`mutant: stopped by an unexpected error — no verdict: ${(error as Error).message}`);
     process.exitCode = 2;
   }

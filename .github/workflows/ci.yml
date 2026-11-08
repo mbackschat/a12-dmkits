@@ -28,7 +28,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     # An uncached run needs ~70–75 min (2026-10-22: setup + :adapter:test ~22 + :cli:test ~16–19 +
-    # :cli:publicContractTest ~23); 60 cancelled every such push from 2026-10-09 on. The cap only stops a hang.
+    # :cli:publicContractTest ~23), so a 60-minute cap would cancel every such push. The cap only stops a hang.
     timeout-minutes: 90
     env:
       # Hosted runners have no private init scripts, but retain the repo's explicit isolated-home contract.
@@ -40,9 +40,8 @@ jobs:
         with:
           path: a12-dmkits
           # NFR #1's currency guard resolves the commits that perf-results/**/*.jsonl name, and the action's
-          # default depth of 1 fetches none of them. At that depth the guard reached `:adapter:test` after 31
-          # billable minutes and reported HEAD as unmeasured — a commit that had touched only settings.gradle
-          # and a doc (2026-09-21). Full history is the input that check, and `git describe`, actually need.
+          # default depth of 1 fetches none of them, so the currency check could not decide. Full history is the
+          # input that check, and `git describe`, actually need.
           fetch-depth: 0
 
       # Seconds, and first, because the condition it catches is otherwise found half an hour in. The Kotlin
@@ -146,12 +145,11 @@ jobs:
       # local `check` and Stage 4 is exactly a change that could regress the kernel-free property.
       # `:interpreter-bridge:check` is the second ConditionReadBack provider plus its own purity lint;
       # `check` rather than `test` because the lint is what holds the module's kernel-free claim.
-      # `:schemakit:check` for the same reason and a sharper one: until 2026-09-05 the fifth published kit
-      # appeared in NO lane here, so neither its 27 test classes nor `verifySchemakitPurity` — the guard
-      # SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had ever run in CI. It costs 4 s.
+      # `:schemakit:check` for the same reason and a sharper one: the fifth published kit is in no other lane, so
+      # this is the only place CI runs its tests and `verifySchemakitPurity` — the guard SCHEMAKIT-SPEC §1 cites
+      # for the module's kernel-free claim. It costs 4 s.
       # `:consistency-gate:check` is the F3/F3-c façade module — the one whose whole claim is a verdict reached
-      # with NO kernel present, so its purity lint is the guard behind that claim rather than a formality. It
-      # carried a sibling `:interpreter-preflight:check` until 2026-09-20, when the two façades merged.
+      # with NO kernel present, so its purity lint is the guard behind that claim rather than a formality.
       # `:verifyPublishedClasspathsAreKernelFree` is the resolution-level half of that same claim across every
       # published artifact, and is named explicitly for the reason the module lanes above are: it hangs off
       # root `check`, which this workflow does not run.
@@ -168,11 +166,11 @@ jobs:
       # compiled green for the module's whole life while emitting nothing importable. It is off
       # `:consistency:check` deliberately (it needs node and npm), so naming it here is what runs it at all —
       # the Node setup step above puts both on PATH. It reaches no network.
-      # `:consistency:verifyConsistencyDeliveryCeiling` is the JS half of the checker's ABSOLUTE release bar (owner-ratified
-      # 2026-09-16): the packed tarball's byte count against a 1 MiB ceiling. It reuses the pack the consumer
+      # `:consistency:verifyConsistencyDeliveryCeiling` is the JS half of the checker's ABSOLUTE release bar
+      # (owner-ratified): the packed tarball's byte count against a 1 MiB ceiling. It reuses the pack the consumer
       # test already performs, so it costs nothing extra here, and it needs a routine lane precisely because the
       # cross-revision collector runs only at release — a doubled download would otherwise ship unnoticed. Its
-      # JVM twin `verifyConsistencyJvmJarCeiling` (2 MiB on the jar, ratified 2026-09-18) is NOT named here
+      # JVM twin `verifyConsistencyJvmJarCeiling` (2 MiB on the jar) is NOT named here
       # because it rides `:consistency:check` below: it needs only `jvmJar`, which that lifecycle already
       # builds, where the tarball bar needs a pack this workflow sets node and npm up for.
       # `:consistency:verifyConsistencyShippedFiles` closes the denominator on what the checker publishes, in
@@ -189,16 +187,14 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         # `:interpreter:verifyInterpreterDependencies` is the MIRROR of the checker's NFR #1: ordinary
-        # evaluation must not depend on consistency checking. It landed 2026-09-17 because the claim had no
-        # enforcement locus — a planted `project(':consistency')` on `jsMain` passed both existing interpreter
-        # gates under forced execution. The purity lint reads import TEXT and so cannot see a declared-but-
+        # evaluation must not depend on consistency checking. It is that claim's enforcement locus: a planted
+        # `project(':consistency')` on `jsMain` passes both other interpreter gates under forced execution. The purity lint reads import TEXT and so cannot see a declared-but-
         # unimported edge; this one reads the resolved graph, including intra-repo project components, which no
         # group filter sees.
         # The `:interpreter:*` gates are named individually because this workflow runs `:interpreter:allTests`,
         # not `:interpreter:check` — that lifecycle also drags in dokka, npm packing and Maven staging, which
-        # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
-        # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
-        # among them.
+        # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; a gate not
+        # named here runs nowhere, `verifyInterpreterPurity` — the EUPL import boundary — included.
         # `--continue` makes one red run report every failing lane rather than the first. Gradle still skips a task
         # whose dependency failed, so gradle/continue-reports-every-failure.gradle turns each test task's
         # guard-driving `dependsOn` into `finalizedBy` under it: one red guard no longer hides the suite it drives.

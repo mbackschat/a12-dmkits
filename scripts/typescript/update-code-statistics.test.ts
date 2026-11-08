@@ -94,7 +94,7 @@ test("tracked sources hidden by ignore policy fail instead of silently lowering 
 });
 
 // A fresh release perf gate prunes a committed run from perf-results/ before writing its own, which left a tracked
-// file absent and surfaced as a bare lstat ENOENT in the middle of publish-release (v0.15.0, 2026-11-06).
+// file absent; unhandled, that surfaces as a bare lstat ENOENT in the middle of publish-release.
 test("a tracked file missing from the working tree is named with its remedy instead of an lstat failure", t => {
   const root = fixture(t);
   fs.rmSync(path.join(root, "core/src/main/java/Product.java"));

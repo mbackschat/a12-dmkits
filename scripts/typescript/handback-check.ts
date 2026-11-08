@@ -13,15 +13,13 @@ const { execFileSync } = require("node:child_process");
  * WHAT IT CHECKS, AND WHY THESE THREE. Each is a defect that actually shipped, and each is decidable from the
  * text plus `git`:
  *
- *   (1) STALE REVISION. The letter tells the reader which commit to verify against. On 2026-09-07 that line
- *       named a commit five commits behind HEAD and the maintainer caught it by eye. A cited hash must resolve
+ *   (1) STALE REVISION. The letter tells the reader which commit to verify against. A cited hash must resolve
  *       and the revision line must name HEAD, because a peer verifying against the wrong tree finds the
  *       measurements missing and the round trip is wasted.
  *
  *   (2) A MECHANISM OUTSIDE THE HYPOTHESIS SECTION. CLAUDE.md: "the payload is the table of (input → observed
  *       output → oracle used); the explanation belongs in a separate section marked as hypothesis". The letter
- *       already carries such a section. On 2026-09-07 a causal sentence sat in a measurement section instead,
- *       was read as a finding, and cost a correcting round trip.
+ *       already carries such a section, and a causal sentence in a measurement section is read as a finding.
  *
  *   (3) A CAUSAL CLAIM ABOUT THE PEER'S ESTATE. This is the sharp one and the reason the checker exists.
  *       "The confound was the comparand" was written into a section refuting THEIR clauses. No oracle of ours

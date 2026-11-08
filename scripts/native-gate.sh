@@ -18,8 +18,8 @@ NATIVE="${1:-$ROOT/cli/build/native/nativeCompile/dmtool}"
 # value is handed to Gradle as `-PdmtoolContractExecutable`, which the :cli project resolves against ITS OWN
 # directory — so a repo-relative path passes the check here and then arrives at the task as `cli/cli/…`, which
 # fails as a missing task input rather than as anything a reader would connect to the argument they typed.
-# One value must name one file in both frames. (publish-release.sh always passed an absolute path, so the
-# trap only sprang on a hand-run: 2026-08-07.)
+# One value must name one file in both frames. (publish-release.sh passes an absolute path, so only a hand-run
+# hits the trap.)
 [[ "$NATIVE" = /* ]] || NATIVE="$(cd "$(dirname "$NATIVE")" 2>/dev/null && pwd)/$(basename "$NATIVE")"
 VERSION="$(sed -nE "s/^version = '([^']+)'/\1/p" "$ROOT/build.gradle")"
 

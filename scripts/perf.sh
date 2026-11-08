@@ -52,13 +52,13 @@ case "$mode" in
         if [ -n "$counts" ]; then
             # A method pattern across the WHOLE routine tier, not just the two original classes: the task already
             # restricts to @Tag('perf'), so `*.$counts` cannot reach anything outside it, and naming classes here
-            # made `gate groupScopedFillScalesSubQuadratically` fail with "No tests found" (review, 2026-08-13).
+            # made `gate groupScopedFillScalesSubQuadratically` fail with "No tests found".
             run_gradle :adapter:perfGateTest --tests "*.$counts"
         else
             # No --tests: the task selects the whole @Tag('perf') routine tier itself (adapter/build.gradle), so a
             # new perf test cannot be left out of the gate by forgetting to name it here. A --tests pattern would
-            # not even work as a widening — Gradle ANDs the command-line filter with the task's own, so
-            # `--tests "*PerfTest"` against the old two-class filter matched NOTHING (measured 2026-08-13).
+            # not even work as a widening — Gradle ANDs the command-line filter with the task's own, so a
+            # `--tests` pattern can only narrow the task's selection, never extend it.
             run_gradle :adapter:perfGateTest
         fi ;;
     bench)

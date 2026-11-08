@@ -332,9 +332,7 @@ function ranInThisRun(fresh: boolean, task: TaskState): boolean {
  * Per-CLASS evidence: for one named class, did the run this log describes actually execute it?
  *
  * The whole-estate report answers "which tasks ran"; a filtered run (`--tests '*Foo*'`) leaves every other
- * class's XML in place, so "is THIS class green" cannot be read off a task total. Measured 2026-09-04: a
- * corrective test was judged from a `tests completed` line four times, and twice the judgement was about a
- * class the run had not touched. This prints the discriminator directly — the file's own freshness, beside the
+ * class's XML in place, so "is THIS class green" cannot be read off a task total. This prints the discriminator directly — the file's own freshness, beside the
  * state of the task that owns it.
  */
 function reportClass(pattern: string, states: Map<string, TaskState>, cutoff: Cutoff): void {

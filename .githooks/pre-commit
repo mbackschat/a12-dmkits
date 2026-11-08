@@ -8,9 +8,9 @@
 # It also WARNS, without refusing, about a staged source file past its soft code-line limit (SOURCE SIZE below).
 #
 # BUILD OUTPUT. .gitignore does NOT cover this: it is consulted only for UNTRACKED paths, so `git add -f` walks
-# straight past it and, once a path is tracked, the ignore rule is never consulted again. That is exactly how 72
-# `build/*-red.log` files entered this repository across ~20 commits on 2026-07-26/27 and published 591 copies
-# of an absolute home path. This hook is the early, local half of the defence; the authoritative half is
+# straight past it and, once a path is tracked, the ignore rule is never consulted again — so build logs, and the
+# absolute home paths inside them, can be committed. This hook is the early, local half of the defence; the
+# authoritative half is
 # `TrackedOutputGuardTest`, which runs in CI where a hook cannot be assumed.
 #
 # Wire it once per clone:  git config core.hooksPath .githooks   (scripts/doctor.sh checks that you did)
@@ -20,14 +20,13 @@ staged="$(git diff --cached --name-only --diff-filter=ACMR)"
 [ -z "$staged" ] && exit 0
 
 # ---------------------------------------------------------------------------------------------------------
-# READING AN mtime PORTABLY, AND REFUSING WHEN WE CANNOT. `stat` speaks two incompatible dialects, and the
-# first version of the doc-guard check tried the BSD one and fell back to the GNU one — which does not work,
-# because the wrong dialect does not fail CLEANLY. GNU's `stat -f %m F` reads `%m` as a FILE: it prints F's
-# FILESYSTEM block on stdout and exits 1, so `stat -f %m F || stat -c %Y F` returned that block CONCATENATED
-# with the real number. Every `[ "$t" -gt … ]` then died as a non-integer — and because such a test sits on
-# the LEFT of a `&&`, `set -e` exempts it — so every mtime silently read as 0, `0 -lt 0` was false, and that
-# entire check NEVER FIRED on any GNU-coreutils machine, i.e. on Linux and on CI. It worked on macOS, which is
-# why only CI saw it (2026-08-22). Hence: probe the dialect ONCE, validate that every reading is an integer,
+# READING AN mtime PORTABLY, AND REFUSING WHEN WE CANNOT. `stat` speaks two incompatible dialects, and trying the
+# BSD one with a fallback to the GNU one does not work, because the wrong dialect does not fail CLEANLY. GNU's
+# `stat -f %m F` reads `%m` as a FILE: it prints F's FILESYSTEM block on stdout and exits 1, so
+# `stat -f %m F || stat -c %Y F` returns that block CONCATENATED with the real number. Every `[ "$t" -gt … ]`
+# then dies as a non-integer — and because such a test sits on the LEFT of a `&&`, `set -e` exempts it — so every
+# mtime silently reads as 0 and the check never fires on a GNU-coreutils machine, i.e. on Linux and on CI, while
+# it works on macOS. Hence: probe the dialect ONCE, validate that every reading is an integer,
 # compare with `if` rather than `&&`, and REFUSE if a reading is unusable. A check that cannot measure must not
 # wave a commit through. Locked in both dialects plus the answers-neither case by
 # scripts/selftest-precommit-doc-guards.sh, which is CI-run via `:deliveryGuardTest`.
@@ -76,8 +75,8 @@ newest_mtime() { # the mtime of newest_path $1; 0 if none
 # What a lane's result directory $1 says about a change whose newest file has mtime $2: `stale` when no result
 # file was written since, `red` when one written since records a failure, `green` otherwise.
 #
-# RED IS NOT EVIDENCE. Freshness alone was the whole test until 2026-09-24, so a lane that ran red after the
-# change satisfied the check exactly as a green run did. Only files written since the change are read for
+# RED IS NOT EVIDENCE. Under freshness alone, a lane that ran red after the change would satisfy the check exactly
+# as a green run does. Only files written since the change are read for
 # failures: result files persist, so a red file from an earlier run of a class that has since been re-run
 # green in a newer file must not refuse forever. Strictly-older is stale; mtimes are second-granular, so a tie
 # means "the guard ran in the same second as the edit" and counts as fresh, since a guard run cannot
@@ -148,18 +147,11 @@ if [ -n "$doc_triggers" ]; then
   newest_trigger="$(newest_mtime "$doc_triggers")" || exit 1
   stale_lanes=""
   red_lanes=""
-  # Every doc-driven lane. referentGuardTest and staleGapGuardTest were added 2026-09-03 after a
-  # quoted-title ratchet in the first went red on commit 033fe3ef6, which this check had passed. Root
-  # :docGuardTest already dependsOn all the cli lanes, so the gap is not the task graph: `--rerun` does
-  # NOT propagate to dependencies, so a session that reruns some of the named tasks leaves the others
-  # UP-TO-DATE — genuinely unrun against the change — and the freshness check inspected only the
-  # directories it knew about, so nothing noticed until a LATER edit finally tripped the ratchet.
-  #
-  # semanticsMapGuardTest was added 2026-09-04, and its absence is why that comment used to read "all four
-  # doc-driven lanes" while being short by one. It declares SEMANTICS-MAP, KERNEL-FINDINGS, KERNEL-SEMANTICS
-  # and INTERPRETER-GAPS as inputs, and a SEMANTICS-MAP edit citing a lock class outside the configured lock
-  # trees left :cli:test red for three commits without this check noticing. Derive the list when you touch
-  # it: the doc-driven lanes are the test tasks whose declared inputs include a docs/*.md file.
+  # Every doc-driven lane, each named. Root :docGuardTest already dependsOn all the cli lanes, but `--rerun`
+  # does NOT propagate to dependencies, so a session that reruns some of the named tasks leaves the others
+  # UP-TO-DATE — genuinely unrun against the change — and this check inspects only the directories it names,
+  # so a lane missing here can stay red unnoticed. Derive the list when you touch it: the doc-driven lanes are
+  # the test tasks whose declared inputs include a docs/*.md file.
   for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest \
            cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest \
            cli/build/test-results/semanticsMapGuardTest; do
@@ -200,8 +192,7 @@ fi
 #
 # The doc guards read the WORKING TREE, so once `:cli:dumpOperatorIndex` has regenerated the index they run
 # green against a file this commit does not carry, and the check above passes. CI checks out the commit, with
-# the KERNEL-FINDINGS edit and the old index, and fails. Measured 2026-09-26: a commit landed that way and was
-# caught only by reading `git status` afterwards. Only a derived file is refused, because it is never authored:
+# the KERNEL-FINDINGS edit and the old index, and fails. Only a derived file is refused, because it is never authored:
 # an unstaged change to one is always a regeneration the commit forgot, never a deliberate partial commit.
 derived_unstaged="$(git diff --name-only -- docs/OPERATOR-INDEX.md)"
 if [ -n "$derived_unstaged" ]; then
@@ -217,9 +208,7 @@ fi
 # `leakGuardTest` is always-run and repo-wide, so it sits behind `-Pfast` (TESTING-SPEC "Test tiers") and CI is
 # its only other runner — which runs only on a push, and pushes here are rare by design. The lane is no longer
 # only a leak scan: every guard whose denominator is a whole source tree rides it, so an ordinary kit change can
-# turn it red. BuilderCheckerDivergenceGuardTest did: 58 commits landed between 8d7c55ee0 (2026-09-22), the
-# first to cite one of the six codes it then flagged, and the fix ec9326df0 (2026-09-24), each on a green
-# -Pfast run.
+# turn it red while every -Pfast run, which skips the lane, stays green.
 #
 # The trigger is EVERY staged file rather than a curated set, for the reason the lane gives for being
 # always-run: each class derives its own denominator, and the file that turns one red is the one nobody
@@ -252,9 +241,8 @@ fi
 # Refuse EVERY commit when ANY test run written since the newest staged change recorded a failure.
 #
 # The blocks above ask whether NAMED lanes have run green since the change; none asks whether the runs that
-# did happen passed. a878443c8 (2026-09-24) landed with `:catalogProseReviewGuardTest` red: the guard had run
-# against the staged change and failed, but the command chain that ran it did not gate the commit on its
-# status, and no block here read that lane. A result file written after the change that records a failure is
+# did happen passed: a guard can run against the staged change and fail without the command chain that ran it
+# gating the commit on its status. A result file written after the change that records a failure is
 # the one piece of evidence that is never ambiguous, so this reads every lane, root and module, rather than a
 # curated list that the next unlisted lane would walk past.
 #

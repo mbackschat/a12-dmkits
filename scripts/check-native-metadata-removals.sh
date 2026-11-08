@@ -3,11 +3,9 @@
 # (type, field/method/flag) pair that the baseline had and the recapture does not.
 #
 # It used to compare whole top-level entries as JSON sets, which caught a disappearing method but ALSO fired
-# whenever an entry merely GAINED one: the old entry no longer matched, so a strict superset read as a loss.
-# Measured 2026-08-07: a recapture that grew 1308 → 1370 reflection entries was reported as "5 committed
-# entries removed", of which four were supersets (`RuleEvalCommand` +code/+condition/+field, `BatchCommand`
-# +observationsFile, `Computation` +setErrorCodesToSuppress, `EntityId` +getFilterConditionName) and only one
-# was real. A guard that cries wolf on nearly every capture is a guard that gets waived, which is exactly what
+# whenever an entry merely GAINED one: the old entry no longer matched, so a strict superset read as a loss and
+# a recapture that only grew the metadata reported phantom removals. A guard that cries wolf on nearly every
+# capture is a guard that gets waived, which is exactly what
 # `RK_NATIVE_REMOVAL_REASON` would then have been used for.
 set -euo pipefail
 

@@ -615,7 +615,7 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
 //
 // F's claim-specific oracle asks for this in its own row — "the mirrored guard on the interpreter's published
 // JVM/JavaScript production closure and shipped files, with its own forbidden-dependency positive control" —
-// and until 2026-09-17 the forbidden-dependency half did not exist here. Measured, not supposed: with
+// and the other guards cannot supply that half. Measured, not supposed (2026-09-17): with
 // `implementation project(':consistency')` planted on `jsMain`, `verifyInterpreterPurity` and
 // `interpreterRuntimeClosurePolicyTest` both passed under forced execution.
 //
@@ -1501,11 +1501,10 @@ def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sy
     from(interpreterKotlinJsDistribution) {
         include '*.mjs'
         include '*.mjs.map'
-        // Kotlin/JS 2.4 emits `a12-interpreter-core.d.mts` itself; 2.2 emitted `.d.ts` and this task staged a
-        // renamed second copy beside it. The façade imports through `.mjs` specifiers, which TypeScript
-        // resolves to the `.d.mts` sibling, so the `.d.ts` spelling had no consumer even before the rename —
-        // and after it the pattern matched nothing, leaving the package's declarations to a stale `build/dist`
-        // file that a clean checkout does not have (the defect `:consistency` shipped, 2026-09-21).
+        // Kotlin/JS 2.4 emits `a12-interpreter-core.d.mts` itself (2.2 emitted `.d.ts`). The façade imports
+        // through `.mjs` specifiers, which TypeScript resolves to the `.d.mts` sibling, so a `.d.ts` copy has no
+        // consumer — and a pattern that matches nothing leaves the package's declarations to a stale
+        // `build/dist` file that a clean checkout does not have.
         include 'a12-interpreter-core.d.mts'
         exclude 'a12-dmkits-interpreter.*'
         into('internal')
@@ -1756,8 +1755,7 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
                     "a reason it belongs in a published interpreter",
             )
         }
-        // And the OTHER direction, which nothing here held until 2026-09-18 while the checker's twin has
-        // checked both all along. The enumeration above refuses what nobody decided to ship; on its own it
+        // And the OTHER direction, which the checker's twin checks as well. The enumeration above refuses what nobody decided to ship; on its own it
         // passes a package that ships SHORT, and `required` cannot cover that — it names 12 of the 59
         // entries, so a dropped façade module beyond those 12 is invisible. It is exactly the derived half
         // that needs it: `permittedDist` comes from the TypeScript sources rather than from a hand list, so
@@ -3709,7 +3707,7 @@ if (!performanceForkCountProperty.isPresent()) {
         }
     }
 
-    // Fanned out across fresh processes since 2026-09-19, like the first-answer scenarios. The row is the
+    // Fanned out across fresh processes, like the first-answer scenarios. The row is the
     // median of the per-process medians, and it is that two-level shape that makes JVM warm throughput the
     // one timed quantity in the estate resolvable at NFR #1's 5% (IG152): 1.465x spread within a run,
     // 1.059x across ten of them. A single process could not carry a bar, however the bar was computed.

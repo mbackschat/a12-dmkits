@@ -26,9 +26,9 @@ subprojects {
 //
 // Without this, Gradle logs only `AssertionFailedError at SomeTest.java:41` — the assertion MESSAGE, which is
 // where this project puts its evidence (a spawned script's whole output, a kernel diagnostic, an engine
-// disagreement), goes only to an HTML report. On CI that report is not uploaded, so a red run was a diagnosis
-// dead end: the 2026-08-22 `deliveryGuardTest` failure could not be read at all, and it fails only on Linux, so
-// re-running locally reveals nothing. Cheap, and it turns every future CI red into something readable.
+// disagreement), goes only to an HTML report. On CI that report is not uploaded, so a red run that fails only
+// on Linux could not be read at all, and re-running locally reveals nothing. Cheap, and it makes every CI red
+// readable.
 // `AbstractTestTask`, not `Test`: a Kotlin/JS test task is not a `Test`, and under the narrower type its failure
 // logged only "AssertionError at <file>:<line>", the message reaching nobody but the XML (measured 2026-11-05).
 allprojects {
@@ -253,9 +253,9 @@ tasks.register('gateWiringGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.PromotedGateIsReachedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateGateSiteDenominatorGuardTest'
-        // The refusal census joined 2026-09-20 with its ledger assertion. It reads five main-source trees,
-        // both law tiers, the claim probes and docs/MVK-LEDGER.md at RUNTIME, and it ran in the broad suite,
-        // which declares none of them — so a ledger-only edit left `test` UP-TO-DATE and the census unrun.
+        // The refusal census reads five main-source trees, both law tiers, the claim probes and
+        // docs/MVK-LEDGER.md at RUNTIME. The broad suite declares none of them, so there a ledger-only edit
+        // leaves `test` UP-TO-DATE and the census unrun.
         // A lock the build can skip is not a lock, which is the whole point of the gap it closes (DG56).
         includeTestsMatching 'io.github.mbackschat.a12.dm.ClientRefusalKernelBasisCensusTest'
     }
@@ -515,7 +515,7 @@ ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
     //    perform (`CliTestSupport`, `InternalErrorBoundaryTest`, `McpHttpWireTest`, …) and production `Cli`
     //    does too. Measuring "no members lost against the baseline" does NOT establish this and must not be
     //    cited for it — the baseline was itself captured with the class already excluded, so that comparison
-    //    is true either way. A cold review caught exactly that non-discriminating basis (2026-08-07).
+    //    is true either way.
     def tracingForNativeImage = broad.project.hasProperty('rkNativeAgent')
     untracedDuringCapture.each { name, reason ->
         if (!owningTaskNames.contains(name)) {
@@ -669,8 +669,8 @@ tasks.register('deliveryGuardTest', Test) {
             'source prep self-test'   : file('scripts/selftest-prepare-dmtool-source.sh'),
             // DmtoolLauncherTest executes this selftest, which copies .githooks/pre-commit into fabricated
             // repos — so BOTH are runtime inputs (same pairing as `obligations` in the docGuardTest lane).
-            // Undeclared, this lane sat UP-TO-DATE after either file changed: the 2026-08-22 CI red was first
-            // "verified" locally against a task that had not run, and only reading the task state caught it.
+            // Undeclared, this lane stays UP-TO-DATE after either file changes, so a local re-run "verifies" a
+            // fix against a task that did not run.
             'pre-commit hook'         : file('.githooks/pre-commit'),
             'doc-guard hook self-test': file('scripts/selftest-precommit-doc-guards.sh'),
             'pre-push hook'           : file('.githooks/pre-push'),
@@ -761,19 +761,17 @@ tasks.register('releaseGapGuardTest', Test) {
 tasks.register('docGuardTest', Test) {
     description = 'Freshness/bridge guards that read repo docs + dsl sources at runtime (split out so such an edit re-runs only these).'
     group = 'verification'
-    // THE DOC GUARDS ARE SPLIT ACROSS MODULES, so this name has to mean ALL of them (2026-08-12). This task owns
-    // the root-module readers; the ledger-shape, CLI-contract and index readers live in `:cli` under the SAME task
+    // THE DOC GUARDS ARE SPLIT ACROSS MODULES, so this name has to mean ALL of them. This task owns the
+    // root-module readers; the ledger-shape, CLI-contract and index readers live in `:cli` under the SAME task
     // name plus `:cli:staleGapGuardTest`. "Run the doc guards" is the scoping decision a docs-only change actually
-    // makes, and with two same-named tasks it silently selected the wrong half: a malformed `IG126` ledger row
-    // shipped in 53326fa0 and survived because the row's grammar is asserted in `:cli:staleGapGuardTest`, while the
-    // docs-only checkpoint ran this task. Aggregating is preferred over asserting the ledger grammar twice — one
+    // makes, and with two same-named tasks it would silently select one half: a ledger row's grammar, for
+    // instance, is asserted only in `:cli:staleGapGuardTest`. Aggregating is preferred over asserting the ledger grammar twice — one
     // regex in two modules is the duplication-that-must-stay-in-sync smell. These are cross-module TASK edges (not
     // project edges) and both targets declare their inputs, so they cost nothing when no doc input changed.
     //
     // This edge set is the same list the pre-commit hook states twice — once as the result directories it wants
-    // evidence from, once as the command it prints — so `GateTierWiringTest` compares all three. It stood at
-    // three edges while the hook carried four, because adding `:cli:semanticsMapGuardTest` on 2026-09-04
-    // updated the hook alone and every surface describing this task kept calling the obvious command complete.
+    // evidence from, once as the command it prints — so `GateTierWiringTest` compares all three. A guard added
+    // to one surface alone would leave the others describing an incomplete command as complete.
     dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest', ':cli:referentGuardTest',
             ':cli:semanticsMapGuardTest'
     useJUnitPlatform()
@@ -803,7 +801,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.SurvivingDataNotInBuildGuardTest'
         // Authored TypeScript against the tsconfigs a project's `check` actually invokes. The sibling Gradle
         // guards refuse authored JavaScript, which says what the sources ARE and nothing about whether the
-        // compiler sees them — and `vite.config.ts` sat outside every `include` until 2026-09-17.
+        // compiler sees them; a config file such as `vite.config.ts` can sit outside every `include`.
         includeTestsMatching 'io.github.mbackschat.a12.dm.ConsumerTypeScriptCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AdmissionClaimIsAssertedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypedConditionAuthoringRatchetTest'
@@ -1284,15 +1282,13 @@ ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> co
     // An INTRA-REPO edge is a `ProjectComponentIdentifier`, which every filter above is blind to — and that
     // blindness was measured, not supposed (2026-09-17): with `implementation project(':interpreter')` planted
     // on `:consistency`'s `jsMain`, the interpreter resolved onto `jsRuntimeClasspath` and this guard and
-    // `verifyConsistencyPurity` both reported clean, while the checker's build file claimed the opposite in as
-    // many words. A group allowlist cannot cover it either: every module here publishes under ONE group, so
+    // `verifyConsistencyPurity` both reported clean. A group allowlist cannot cover it either: every module here publishes under ONE group, so
     // admitting `:predicates` by group would admit the interpreter too.
     //
     // It runs BEFORE the module allowlist, and the ordering is what keeps it reachable: a project edge
     // drags its own transitive modules in, so an allowlist that did not happen to admit them would throw
-    // first and report the fallout instead of the edge. `:consistency`'s allowlist admits them today,
-    // which made the control pass by luck rather than by design — the same ordering defect measured in
-    // `verifyPredicatesPurity` on 2026-09-17, where it did fire.
+    // first and report the fallout instead of the edge. An allowlist that happens to admit them would let
+    // a reversed order pass by luck rather than by design; `verifyPredicatesPurity` has the same constraint.
     //
     // Opt-in, because a caller whose claim is about EXTERNAL jars has nothing to state here: a project edge
     // onto a kernel-carrying module still drags the kernel in as a module, which the forbidden-group arm
@@ -1411,11 +1407,10 @@ def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClas
     group = 'verification'
     description = 'Fail if a published kernel-free artifact resolves a raw kernel module onto a consumer classpath.'
     // Keyed by the module's own POSITIVE CONTROL — a group its classpath really resolves — because the
-    // control is what separates "no kernel here" from "this guard read nothing". A shared Jackson control was
-    // right while every published artifact was a Java kit and became wrong the moment one sat on top of the
-    // multiplatform modules, which carry kotlinx and no Jackson at all: the guard then failed a module it had
-    // nothing to say about, which reads as a finding (measured 2026-09-16, adding dmkits-interpreter-preflight
-    // — folded into :consistency-gate 2026-09-20, whose own Jackson control still separates the two cases).
+    // control is what separates "no kernel here" from "this guard read nothing". A shared Jackson control fits
+    // the Java kits but not an artifact built on the multiplatform modules, which carry kotlinx and no Jackson
+    // at all: the guard then fails a module it has nothing to say about, which reads as a finding (measured
+    // 2026-09-16).
     def kernelFreePublications = [
             'core'              : 'com.fasterxml.jackson.',
             'rulekit'           : 'com.fasterxml.jackson.',
@@ -1457,10 +1452,9 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
                 return false
             }
             def text = buildFile.text
-            // The application, never the bare string: this read `!(text =~ /maven-publish/)` until
-            // 2026-09-17, when a COMMENT in `:consistency` explaining that the module had no maven-publish
-            // block satisfied it — the block bound to root, the publications were never created, and this
-            // guard reported clean. A guard whose subject is a plugin must look for the plugin being applied.
+            // The application, never the bare string: a COMMENT that mentions maven-publish satisfies
+            // `!(text =~ /maven-publish/)` while the block still binds to root and creates no publication.
+            // A guard whose subject is a plugin must look for the plugin being applied.
             text =~ /(?m)^\s*publishing\s*\{/ &&
                     !(text =~ /(?m)^\s*(id\s+['"]maven-publish['"]|apply\s+plugin:\s*['"]maven-publish['"])/)
         }
@@ -1481,14 +1475,11 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
 
 // --- Every coordinate a shipped POM names must be one this build PUBLISHES --------------------------------
 //
-// The defect this catches shipped twice and was invisible both times, because a POM is generated output that
-// no test read. Measured 2026-09-17, when the preflight was still its own module: `dmkits-consistency-gate`
-// and `dmkits-interpreter-preflight` both declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0`
-// at COMPILE scope, and `:consistency` had no
-// `maven-publish` block at all — so a Maven consumer of either façade could not resolve the very types their
-// public API returns. `:predicates` had met the identical constraint earlier and its build file records it
-// ("published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM"), which is
-// what makes this a guard rather than a one-off fix: the rule was known and nothing enforced it.
+// A POM is generated output that no test reads, so nothing else notices a façade that declares a COMPILE-scope
+// dependency on an in-repo module without a `maven-publish` block: a Maven consumer of that façade cannot
+// resolve the very types its public API returns. `:predicates` states the same rule in its build file
+// ("published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM"); this
+// guard enforces it for every module.
 //
 // It reads the GENERATED POMs, not the build scripts. A declaration's coordinate is decided by the target
 // project's publication — Gradle rewrites a project dependency into whatever artifactId that project

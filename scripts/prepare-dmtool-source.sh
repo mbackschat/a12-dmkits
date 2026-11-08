@@ -26,8 +26,8 @@ fail() {
 
 # The BUILD's JDK is pinned by build.sh; the LAUNCHER's was not, because it starts under whatever JAVA_HOME the
 # caller exports. A JAVA_HOME naming a JDK that no longer exists therefore stops the launcher from starting at
-# all — and reading that as a provenance verdict reported a correctly rebuilt launcher as the wrong source
-# (dmtool feedback 2026-08-19). So the check applies the SAME pin the build does, and "could not start" is a
+# all — and reading that as a provenance verdict reports a correctly rebuilt launcher as the wrong source.
+# So the check applies the SAME pin the build does, and "could not start" is a
 # separate outcome from "started and named another revision"; neither ever borrows the other's message.
 pin_stderr="$(mktemp)"
 trap 'rm -f "$pin_stderr"' EXIT

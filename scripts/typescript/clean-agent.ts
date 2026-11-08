@@ -8,8 +8,8 @@ const { spawn } = require("node:child_process");
  *
  * Both instruments measure what a cold agent learns from dmtool alone, so anything the agent brings in from
  * this machine is contamination. An in-process subagent (the Agent tool, a Workflow `agent()`) inherits the
- * global and project CLAUDE.md, the auto-memory index and the skill listing: all 33 transcripts of the
- * 2026-11-07 eval run carried the global file's canary and the project file's DSL facts. Neither a custom
+ * global and project CLAUDE.md, the auto-memory index and the skill listing, so its transcript carries the global
+ * file's canary and the project file's DSL facts. Neither a custom
  * agent (`omitClaudeMd` keeps the skill listing) nor `--safe-mode` (its init event still listed the bundled
  * skills and two installed plugins on Claude Code 2.1.319, measured 2026-11-08) is clean. A headless session
  * launched with the switches below, from a directory with no context file above it, is: its init event lists
@@ -32,8 +32,8 @@ const { spawn } = require("node:child_process");
  * A clean session also has no permission rules, and nobody can answer a prompt, so its permission checks are
  * bypassed and confinement comes from elsewhere: the OS sandbox lets Bash write only to the working directory
  * and the `--writable` directories, and deny rules keep the Write and Edit tools out of the home directory,
- * where the repository and the operator's configuration live. Without the bypass the harness refused 13 of 197
- * Bash calls in four probe sessions even inside the sandbox, a heredoc of JSON among them (2026-11-08). Any refusal
+ * where the repository and the operator's configuration live. Without the bypass the harness refuses some Bash
+ * calls even inside the sandbox, a heredoc of JSON among them (Claude Code 2.1.319, measured 2026-11-08). Any refusal
  * that remains is reported as a problem, because a session whose calls were refused measured the harness.
  *
  * `--check-transcript` re-checks a finished session, for the probe's audit: a transcript with no init event
@@ -90,8 +90,7 @@ function grantedTools(options: Options): string[] {
 /**
  * The launch of one session: its arguments and environment, with `tmp` as its private temp directory. Under the
  * OS sandbox every session's TMPDIR is /tmp/claude-<uid> unless CLAUDE_CODE_TMPDIR moves it, so concurrent
- * sessions shared files there: three eval producers wrote `$TMPDIR/ops.json` within a second and one validated
- * another's (2026-11-08). The directory must be writable too, or the sandbox refuses the agent's own scratch files.
+ * sessions share files there and one can read another's scratch file. The directory must be writable too, or the sandbox refuses the agent's own scratch files.
  */
 function sessionPlan(options: Options, tmp: string): { args: string[]; env: Record<string, string> } {
   return {

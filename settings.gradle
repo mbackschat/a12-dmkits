@@ -85,7 +85,7 @@ include 'predicates'
 // `api project(…)` edge that folds an integration into a core's published POM works equally well in reverse,
 // and §1 forbids exactly that for these façades. Kernel-free, held by its own verifyConsistencyGatePurity.
 //
-// They were two modules until 2026-09-20, split so that each POM named only what its own consumer needs. That
+// Two modules would let each POM name only what its own consumer needs. That
 // separation buys nothing while the dmkit developer wave is deferred (RELEASE-SPEC §1/§11) — nobody can
 // resolve either coordinate — and it cost a second published artifact, purity lint, API golden and CI lane
 // for two source files. Re-split it if that wave ships and the over-declared dependency starts reaching a

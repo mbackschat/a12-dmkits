@@ -3,12 +3,11 @@
 # selftest-test-evidence.sh — locks the evidence reporter in both directions.
 #
 # This script's whole value is that a reader BELIEVES its counts, so a wrong count here is worse than no tool
-# at all: it is a false green wearing the uniform of a check. Two defects of exactly that kind have shipped
-# in it — a cutoff that marked every file stale (its first version), and a cutoff taken from a birth time that
-# `>` does not reset, which on 2026-08-31 credited a 6-second run with 13 directories and 2016 tests from
-# earlier runs. Both were invisible in the output. Hence the does-count / does-NOT-count pairing below, and the
-# cutoff cases that drive the arithmetic directly through `--print-cutoff`. A third regression made the
-# reporter abort under stock macOS Bash. The command is now a POSIX launcher over typed logic, so every
+# at all: it is a false green wearing the uniform of a check. Two defects of that kind are invisible in the
+# output — a cutoff that marks every file stale, and a cutoff taken from a birth time that `>` does not reset,
+# which credits a short run with earlier runs' results. Hence the does-count / does-NOT-count pairing below, and
+# the cutoff cases that drive the arithmetic directly through `--print-cutoff`. The reporter must also run under
+# stock macOS Bash. The command is a POSIX launcher over typed logic, so every
 # invocation below deliberately uses `/bin/dash` as the POSIX oracle and copies the complete launcher/runtime source set.
 set -euo pipefail
 
@@ -116,7 +115,7 @@ out="$(run "$tmp")"
 check "valid single-quoted XML attributes retain their counts" \
   "7" "$(grep -oE '[0-9]+ tests' <<<"$out" | head -1 | grep -oE '[0-9]+')"
 
-# A later execution overwrites XML while the completed log stays unchanged (G-EVIDENCE, 2026-09-27).
+# A later execution overwrites XML while the completed log stays unchanged (G-EVIDENCE).
 echo 'does NOT count — newer results beside a historical log'
 
 mk_tree

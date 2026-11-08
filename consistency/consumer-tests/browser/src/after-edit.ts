@@ -7,8 +7,7 @@
 //
 // **The quantity is a keystroke off a HELD analysis against the stateless draft that answers identically.**
 // `checkDraftJson` performs one admission, one preparation and two checks per call; a handle makes the same
-// keystroke cost one check. This cell was unmeasurable until `snapshotOfJson` shipped on 2026-09-18 — there
-// was no stateful entry point in JavaScript to hold anything with.
+// keystroke cost one check; `snapshotOfJson` is the stateful entry point in JavaScript that holds it.
 export {};
 
 const statusElement = document.querySelector<HTMLElement>('#status');

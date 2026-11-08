@@ -2,9 +2,8 @@
 # Refuse a checkout whose history cannot answer NFR #1, in seconds rather than in half an hour.
 #
 # `scripts/typescript/measurement-currency.ts` needs the commits that `perf-results/**/*.jsonl` name to be
-# resolvable. A shallow clone has none of them, so on 2026-09-21 CI ran 31 minutes, reached `:adapter:test`, and
-# only then reported a commit as unmeasured that had touched only `settings.gradle` and a doc. This needs only the
-# checkout, so it runs before CI provisions anything, including the Node runtime the currency check itself needs.
+# resolvable, and a shallow clone has none of them. Detecting that needs only the checkout, so this runs before CI
+# provisions anything, including the Node runtime the currency check itself needs.
 #
 # Environment discovery is what shell is for here: it reads one git property and exits. The invariant itself
 # lives in the TypeScript check, which is where the records are parsed; this file deliberately duplicates none of

@@ -27,8 +27,8 @@ mkdir -p "$DEST/licenses"
 # 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README/CLAUDE.md (already EUPL-aware:
 #     per-artifact licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the
 #     repo root. The mirror's AGENTS.md is a GENERATED tiny redirect to the mirror's own (public) CLAUDE.md —
-#     never copied from the source repo, where AGENTS.md is a SYMLINK to the internal CLAUDE.md (dual-runtime,
-#     2026-07-09): a dereferencing `cp` of that symlink would ship the internal instructions into the mirror.
+#     never copied from the source repo, where AGENTS.md is a SYMLINK to the internal CLAUDE.md (dual-runtime):
+#     a dereferencing `cp` of that symlink would ship the internal instructions into the mirror.
 rsync -a --exclude='assets/infographics/**/*.png' --exclude='assets/infographics/*.png' "$ROOT/plugin/" "$DEST/"
 cp "$ROOT/.locmetryrc" "$DEST/.locmetryrc"
 cat > "$DEST/AGENTS.md" << 'AGENTS_EOF'

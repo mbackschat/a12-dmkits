@@ -116,7 +116,7 @@ dependencies {
     // and the CLI. Its package-private codec validates the current profile shape before synthesis.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
-    // modelkit (structure builder) folded into the root project (2026-06-09) — its classes arrive via
+    // modelkit (structure builder) lives in the root project — its classes arrive via
     // `api project(':')`, so a read round-trip's test can author a model with it without a separate dep.
 
     // The kernel-free interpreter (docs/INTERPRETER-ARCHITECTURE.md). Its JVM target is consumed here for two
@@ -291,8 +291,8 @@ tasks.named('test') {
     // skipped. Opted in here and nowhere else: every perf/measurement lane must generate what it times, and the
     // cache defaults off so a new timing lane cannot inherit it by omission. A perf run through THIS task opts
     // back out, because -PrunPerf pulls the timing bars into a lane that is otherwise cached; so does
-    // -PrunKernelProbe, whose footprint probe read dynamic Groovy at 25–200 kB instead of 1.05–12.08 MB per model
-    // while it was missing here (2026-11-06). KernelModelCodeCache.requireDisabledFor refuses at the measurement.
+    // -PrunKernelProbe, whose footprint probe reads dynamic Groovy at 25–200 kB instead of 1.05–12.08 MB per model
+    // with the cache on. KernelModelCodeCache.requireDisabledFor refuses at the measurement.
     if (!project.hasProperty('runPerf') && !project.hasProperty('allTests') && !project.hasProperty('runKernelProbe')) {
         systemProperty 'rk.kernelCodeCache', 'true'
     }
@@ -364,9 +364,8 @@ tasks.named('test') {
     dependsOn 'performanceFixtureGuardTest'
     dependsOn 'retainedComputationFixtureGuardTest'
     dependsOn 'workspacePreparationFixtureGuardTest'
-    // checkerSilenceGuardTest joined the always-on list on 2026-09-13 without this measurement and summed to
-    // 416.7s of suite time on 2026-10-04: every focused `--tests` run paid for it in full, since its inputs are
-    // the whole test classpath. It sweeps both engines over model populations rather than binding a committed
+    // checkerSilenceGuardTest sums to 416.7s of suite time (measured 2026-10-04), which every focused `--tests`
+    // run would pay in full, since its inputs are the whole test classpath. It sweeps both engines over model populations rather than binding a committed
     // fixture, so it belongs with the broad guards.
     if (!project.hasProperty('fast')) {
         dependsOn 'corpusReplayTest'
@@ -463,7 +462,7 @@ tasks.register('kernelProbeProductionAssertionsTest', Test) {
 // The INNER-LOOP twin of :cli's SemanticsMapResolveTest lock-class check: a new lock class must be placed in
 // docs/SEMANTICS-MAP.md, but that thorough resolver runs only at the checkpoint (:cli:semanticsMapGuardTest) —
 // this millisecond filename lint fails the `-Pfast` loop too, so an unplaced class can't ride to the session
-// end (the 2026-07-24 G2 cost: 5 unplaced classes surfaced only at the full run and forced a commit re-split).
+// end, where it would surface only at the full run and force a commit re-split.
 // Same lock sources as the resolver; containment of the backticked class name is its citation format.
 tasks.register('verifySemanticsMapRegistration') {
     def lockSources = [
@@ -649,9 +648,8 @@ tasks.register('perfGateTest', Test) {
     // never counts a bar that did not run.
     useJUnitPlatform { includeTags 'perf' }
     maxParallelForks = 1
-    // NOT failFast: this lane exists to MEASURE, and one breach used to discard every later lane's numbers —
-    // the 2026-08-11 nightly reported 21 of 26 rows and hid the five behind the one that tripped. A breach now
-    // pays for the full run (each growth floor re-measures up to GROWTH_RETRY_ATTEMPTS times), which is minutes
+    // NOT failFast: this lane exists to MEASURE, and under failFast one breach discards every later lane's
+    // numbers, hiding the rows behind the one that tripped. A breach instead pays for the full run (each growth floor re-measures up to GROWTH_RETRY_ATTEMPTS times), which is minutes
     // against the workflow's 60-minute timeout and buys the complete picture the diagnosis needs.
     failFast = false
     // An observation this runner class has not committed a number for is a failure rather than a note — otherwise
@@ -1033,8 +1031,8 @@ tasks.register('checkerAfterEditPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
-// H5's resources boundary, RETAINED-MEMORY half — the required §8 observation the boundary count hid until
-// 2026-09-17 (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8). Records and asserts nothing.
+// H5's resources boundary, RETAINED-MEMORY half — the required §8 observation a boundary count cannot show
+// (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8). Records and asserts nothing.
 //
 // Serial GC and a fixed heap are not tuning: the lane reads post-GC used heap, so a concurrent collector makes
 // the reading depend on when a background cycle happened to finish, and a growing heap makes two samples
@@ -1134,9 +1132,9 @@ tasks.register('checkerColdStartPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
-// H5-f: the cold boundary's PLAIN-NODE arm, which §8 names alongside the JVM one and which nothing measured
-// until 2026-09-17. Unlike H5-b above it asserts the ratified growth ratio, because that ratio was ratified as a
-// mechanism on 2026-09-16 — long before this host had a lane — so it gates without being fitted to what this
+// H5-f: the cold boundary's PLAIN-NODE arm, which §8 names alongside the JVM one. Unlike H5-b above it asserts
+// the ratified growth ratio, because that ratio was ratified as a mechanism before this host had a lane, so it
+// gates without being fitted to what this
 // lane produced. No latency is asserted and no anchor written, on this runtime least of all.
 //
 // It depends on the packaged consumer install rather than on anything this module compiles: the quantity §8 asks
@@ -1178,8 +1176,8 @@ tasks.register('checkerColdNodePerfTest', Test) {
 
 // H5-h: the PREPARED boundary's plain-Node arm. §8's prepared row reads host-neutral, but the owner's
 // hard-acceptance section attaches "JVM, plain Node and browser consumers" to the whole budget list, so the
-// grid is 5 x 3 and this cell was unmeasured. It asserts the already-ratified growth ratio — ratified as a
-// mechanism on 2026-09-16, before this host had any lane — and no duration.
+// grid is 5 x 3 and this is one of its cells. It asserts the already-ratified growth ratio — ratified as a
+// mechanism before this host had any lane — and no duration.
 //
 // ONE warm child for the whole run, unlike H5-f's launch per observation: warmth is what this boundary is
 // about, so relaunching would measure precisely what it excludes.
@@ -1214,10 +1212,9 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
-// H5-i's plain-NODE arm of the AFTER-EDIT boundary. It could not exist before 2026-09-18: its quantity is a
-// snapshot-reuse ratio, and no stateful entry point was exported to JavaScript, so the cell was deferred with
-// an exported handle named as its re-open trigger (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
-// #h5i-trigger-fired). It asserts the already-ratified keystroke ceiling, whose basis is a work count written
+// H5-i's plain-NODE arm of the AFTER-EDIT boundary. Its quantity is a snapshot-reuse ratio, so it needs the
+// stateful entry point JavaScript gets from `snapshotOfJson` (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-
+// PLAN.md#h5i-trigger-fired). It asserts the already-ratified keystroke ceiling, whose basis is a work count written
 // before any lane existed — but on THIS carrier's own measurement, because a bar holding on a new carrier is
 // a claim rather than an inheritance. Off every automated lane, like its sibling Node lanes: it needs node,
 // npm and the packed tarball.
@@ -1254,10 +1251,9 @@ tasks.register('checkerAfterEditNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
-// H5-j's plain-NODE arm of the resources boundary, and the one whose SUBJECT differs from the JVM lane's:
-// the shipped JS surface had only stateless calls when this landed, so a Node consumer held no analysis (no
-// longer true since `snapshotOfJson` shipped on 2026-09-18 — see the lane's own KDoc) and what §8's
-// release half asks — is a consumer's heap flat across repeated checks — is what this can answer. Informative
+// H5-j's plain-NODE arm of the resources boundary, and the one whose SUBJECT differs from the JVM lane's: it
+// answers §8's release half — is a consumer's heap flat across repeated stateless checks — while holding one
+// analysis is the retention sibling's subject below. Informative
 // by design, per H5's ordering rule: the collector comes first and the bar is the owner's to ratify
 // (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5-j row and #h5i-surface). Off every automated lane
 // for the same reason as the sibling Node lanes — it needs node, npm and the packed tarball.
@@ -1300,8 +1296,8 @@ tasks.register('checkerMemoryNodePerfTest', Test) {
 
 // H5-j's plain-NODE RETENTION arm — the sibling above measures RELEASE across repeated stateless checks, and
 // this measures what holding ONE analysis costs, which is the JVM arm's own subject. It is a separate lane
-// because it was a separate slice: the arm above was scoped to release while the shipped JS surface was
-// string-in string-out, and `snapshotOfJson` made retention reachable here on 2026-09-18. Off every automated
+// because the two questions need different consumers: release needs only stateless calls, while retention needs
+// an analysis held through `snapshotOfJson`. Off every automated
 // lane, like its Node siblings: it needs node, npm and the packed tarball.
 tasks.register('checkerRetainedSnapshotNodePerfTest', Test) {
     description = 'Collect what holding one analysis costs a Node consumer\'s heap, at two model scales.'
@@ -1374,9 +1370,8 @@ tasks.register('checkerPreparedBrowserPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
-// H5-i's BROWSER arm of the AFTER-EDIT boundary — the second of the two cells that row left unmeasured, and
-// unmeasurable until `snapshotOfJson` shipped on 2026-09-18, since the quantity is a snapshot-reuse ratio and
-// there was no stateful entry point in JavaScript to hold anything with. It asserts the ratified keystroke
+// H5-i's BROWSER arm of the AFTER-EDIT boundary. Its quantity is a snapshot-reuse ratio, so it needs the
+// stateful entry point JavaScript gets from `snapshotOfJson`. It asserts the ratified keystroke
 // ceiling on THIS carrier's own measurement: a bar holding on the JVM and on Node is a claim about a browser
 // rather than an inheritance. Off every automated lane — it needs pnpm and a system Chrome.
 tasks.register('checkerAfterEditBrowserPerfTest', Test) {
@@ -1723,10 +1718,8 @@ tasks.register('corpusReplayTest', Test) {
 // mirrors. When it does, the class runs in BOTH — and in the broad one it lacks the runtime inputs its owning
 // task supplies, so it fails there for a reason that has nothing to do with the code under test.
 //
-// Measured, which is why this check exists rather than a comment: `PerfReportScriptTest` was added to
-// `perfScriptGuardTest`'s filter on 2026-08-15 and not here, and the session-end suite reported 5 failures out of
-// 2712 — every row of a class that was green in its own lane seconds earlier, because `perf.report.script` is a
-// system property only the owning task sets.
+// For example `PerfReportScriptTest` reads `perf.report.script`, a system property only `perfScriptGuardTest`
+// sets, so in the broad lane every one of its rows fails while the class is green in its own lane.
 //
 // An ASSERTION rather than a derivation: the root module's `routeExclusivelyHostedTests` derives the exclusions
 // and additionally requires every filtering Test task in the project to be classified as an owner or a reasoned

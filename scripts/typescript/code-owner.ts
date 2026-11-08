@@ -6,8 +6,7 @@ const path = require("node:path");
  *
  * The prior-art check this exists for is the one that keeps failing by succeeding: a grep for a code
  * returns a confident, on-topic hit describing a NARROWER carrier than the one being asked about, and the
- * enquiry stops there. It cost a duplicated family on 2026-09-14 — `MVK_DUPLICATE_PARAM1` was reported, on
- * six group-list carriers, and the field-list question it was asked about was genuinely open. So the report
+ * enquiry stops there. So the report
  * separates the two answers that prose runs together: which family CONSTRUCTS a finding with the code, and
  * what the ledger CLAIMS about it. A disagreement between those two columns is itself the finding.
  */

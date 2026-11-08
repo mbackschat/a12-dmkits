@@ -81,7 +81,7 @@ dependencies {
     implementation project(':schemakit')
 
     // modelkit (the modeller's authoring kit, used to build multi-file include/typedef workspaces in
-    // tests) folded into the root project (2026-06-09) — its classes arrive via `implementation project(':')`.
+    // tests) lives in the root project — its classes arrive via `implementation project(':')`.
 }
 
 application {
@@ -161,12 +161,11 @@ tasks.named('installDist', Sync) {
 // file and `scripts/SourceProvenance.java`.
 //
 // The freshness property the resource exists for holds for `jar`/`installDist`, which consume the generated
-// file itself — but it did NOT hold for `nativeCompile`, and the claim that it did was wrong for eight weeks.
-// Measured 2026-08-07: in ONE invocation, `generateVersionProperties` executed with a new revision and
-// `:cli:nativeCompile` still reported UP-TO-DATE, so the binary kept the previous commit's provenance baked in
-// (HEAD `aa6f1763`, both copies of the resource `aa6f1763 CLEAN`, binary reporting `3b85a822 (clean)`). The
-// generated file was simply not an effective input of that task. `native-gate.sh` caught it — a release
-// binary would otherwise have shipped naming a commit that is not the one it was built from.
+// file itself — but not for `nativeCompile`. Measured 2026-08-07: in ONE invocation, `generateVersionProperties`
+// executed with a new revision and `:cli:nativeCompile` still reported UP-TO-DATE, so the binary kept the
+// previous commit's provenance baked in (HEAD `aa6f1763`, both copies of the resource `aa6f1763 CLEAN`, binary
+// reporting `3b85a822 (clean)`). The generated file is not an effective input of that task, so without this a
+// release binary names a commit that is not the one it was built from.
 normalization {
     runtimeClasspath {
         ignore 'io/github/mbackschat/a12/dm/cli/version.properties'
@@ -256,7 +255,6 @@ def nativeCaptureStampDigest = {
 // Minting the stamp is the one operation that can ASSERT freshness without establishing it, so it refuses to
 // run bare. `capture-native-config.sh` sets the marker and reaches it only after the traced suite, the removal
 // check and the hygiene assertion have all passed; a hand-run claims the same thing with none of them behind it.
-// That is not hypothetical — it happened on 2026-08-07, minutes after a hygiene FAILURE.
 //
 // The escape hatch is deliberate and mirrors `RK_NATIVE_REMOVAL_REASON`: the digest deliberately
 // over-approximates (it hashes all of `cli/src/test`, including the classes `-PrkNativeAgent` excludes from
@@ -413,8 +411,8 @@ tasks.named('test', Test) {
         maxParallelForks = 1
         // A capture-ONLY heap cap. A forked test JVM defaults to a quarter of physical RAM — 4 GB on a 16 GB
         // machine — and this one lives for the whole traced suite, so a lazy GC lets its RSS grow for half an
-        // hour beside a Gradle daemon, a Kotlin daemon and the agent's own native tables. A harness memory
-        // watchdog killed a capture at nine minutes on 2026-09-16 for exactly that. The cap costs some GC
+        // hour beside a Gradle daemon, a Kotlin daemon and the agent's own native tables, until a harness
+        // memory watchdog kills the capture. The cap costs some GC
         // time and buys a footprint that fits; it applies to no other run, because only a capture is both
         // single-forked and long-lived.
         maxHeapSize = '1g'
@@ -508,10 +506,10 @@ tasks.register('docGuardTest', Test) {
             // DocsIndexGuardTest reads docs/README.md (the index) + the whole docs/ + docs/archived/ md tree.
             'docs/README.md'     : rootProject.file('docs/README.md'),
             'docs/*.md tree'     : rootProject.fileTree('docs') { include '**/*.md' },
-            // DocRelativeLinkGuardTest's non-docs arm (widened 2026-09-20) resolves every relative link in the
+            // DocRelativeLinkGuardTest's non-docs arm resolves every relative link in the
             // module and sub-project READMEs, so an edit to one must RE-RUN it rather than restore a green taken
             // while its target still existed. Without this the task goes UP-TO-DATE on exactly the edit that can
-            // break it — the false green this repository has paid for before. `build/` is excluded because the
+            // break it. `build/` is excluded because the
             // Kotlin/JS and npm staging trees copy our markdown into it, and a stale copy there is not a defect.
             'module READMEs'     : rootProject.fileTree('.') {
                 include '**/*.md'

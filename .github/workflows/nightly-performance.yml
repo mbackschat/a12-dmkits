@@ -6,7 +6,7 @@ name: Nightly performance
 # carry no completed CI run of its own.
 on:
   workflow_dispatch:
-  # WEEKLY since 2026-08-16, though the workflow keeps its name. This repo is private, so each run bills
+  # WEEKLY, though the workflow keeps its name. This repo is private, so each run bills
   # Actions minutes: measured over six cron runs the median is 10.3 min, i.e. ~315 min/month daily against a
   # total steady-state spend near 1,300. Weekly costs ~45.
   #
@@ -59,7 +59,7 @@ jobs:
             25.0.4
 
       # The 2026.06-ext1 kernel bootstrap refuses to build below Node 24, and the hosted image's PATH carries
-      # Node 22 (run 41818557495, 2026-11-04). Same reviewed patch as main CI; NodeRuntimePinGuardTest.
+      # Node 22 (run 41818557495). Same reviewed patch as main CI; NodeRuntimePinGuardTest.
       - name: Set up Node for the kernel bootstrap
         uses: actions/setup-node@v6
         with:
@@ -86,10 +86,9 @@ jobs:
       # This launcher targets the dedicated non-cacheable, single-fork perfGateTest task. Compilation and
       # dependencies may restore from cache; the timed measurements themselves always execute fresh.
       #
-      # This is the ONLY automated lane that runs a timing bar (owner policy 2026-08-13: ordinary pushes are
-      # covered by this workflow with full perf coverage, and a release is blocked on regressions). *Qualified
-      # 2026-08-16 when the schedule went weekly: "ordinary pushes are covered" now means covered WITHIN A WEEK,
-      # not overnight. The release gate is unchanged and is what actually blocks a regression from shipping.*
+      # This is the ONLY automated lane that runs a timing bar (owner policy: ordinary pushes are covered by this
+      # workflow with full perf coverage — within a week, since it runs weekly — and a release is blocked on
+      # regressions; the release gate is what actually blocks a regression from shipping).
       # The task
       # selects the whole @Tag('perf') routine tier BY TAG, so a new perf test is gated here by existing — the
       # enumerated filter this replaced ran 2 of 9 such classes. On a hosted runner the self-referential bars
