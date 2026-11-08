@@ -620,8 +620,19 @@ class EvalGoldOracleTest {
      * rule add, interleaved like {@code apply}), assert it re-binds at the single gate, and that the
      * expected field + rule are present.
      */
-    private static void assertSessionGoldValidates(JsonNode task, String model, Path taskFile) {
+    private static void assertSessionGoldValidates(JsonNode task, String model, Path taskFile) throws IOException {
         JsonNode gold = task.get("gold");
+        // The scorer applies a candidate through `dmtool apply`, and the producer prompt shows the gold's record
+        // shape, so the gold must be a record `apply` itself accepts. The EditSession replay below cannot tell:
+        // it read a `spec` wrapper `apply` refuses, which taught haiku to wrap a verified op (2026-11-08 eval).
+        Path dir = Files.createTempDirectory("dmtool-eval-session-");
+        Path modelFile = dir.resolve("model.dm.json");
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(modelFile, model);
+        Files.writeString(opsFile, MAPPER.writeValueAsString(gold.get("ops")));
+        var applied = CliTestSupport.run("-m", modelFile.toString(), "apply", opsFile.toString(), "--dry-run");
+        assertEquals(0, applied.code(),
+                () -> taskFile.getFileName() + " gold op-list is not an `apply` record list: " + applied.out());
         var resolver = resolverFor(task);
         EditSession session = EditSession.read(model, resolver);
         for (JsonNode opNode : gold.get("ops")) {
@@ -633,7 +644,7 @@ class EvalGoldOracleTest {
             } else if (target.equals("group") && op.equals("add")) {
                 session.addGroup(opNode.get("parent").asText(), opNode.get("name").asText());
             } else if (target.equals("rule") && op.equals("add")) {
-                addRuleFromSpec(session, opNode.get("spec"));
+                addRuleFromRecord(session, opNode);
             } else {
                 fail(taskFile.getFileName() + " unsupported session op: " + target + " " + op);
             }
@@ -654,18 +665,18 @@ class EvalGoldOracleTest {
     }
 
     /** Add a rule from an {@code apply}-style spec (the same name/group/path derivation as {@code rule add}). */
-    private static void addRuleFromSpec(EditSession session, JsonNode spec) {
-        String field = spec.get("field").asText();
+    private static void addRuleFromRecord(EditSession session, JsonNode record) {
+        String field = record.get("field").asText();
         int slash = field.lastIndexOf('/');
         String group = field.substring(0, slash);
         String relPath = "../" + field.substring(group.length() + 1);
-        String code = spec.get("code").asText();
-        String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
+        String code = record.get("code").asText();
+        String name = record.hasNonNull("name") ? record.get("name").asText() : code;
         List<LocalizedText> messages = new ArrayList<>();
-        for (JsonNode m : spec.path("messages")) {
+        for (JsonNode m : record.path("messages")) {
             messages.add(new LocalizedText(m.get("locale").asText(), m.get("text").asText()));
         }
-        session.addRule(group, name, relPath, code, spec.get("condition").asText(), "ERROR", messages);
+        session.addRule(group, name, relPath, code, record.get("condition").asText(), "ERROR", messages);
     }
 
     /** The single kernel gate: the session must re-bind (deserialize → expand → checkConsistency). */

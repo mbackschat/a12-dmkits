@@ -15,17 +15,15 @@
       {
         "target": "rule",
         "op": "add",
-        "spec": {
-          "field": "/Order/DeliveryDate",
-          "condition": "AllFieldsFilled(DeliveryDate, PromisedDate) And DifferenceInDays(PromisedDate, DeliveryDate) > 0",
-          "code": "DELIVERY_AFTER_PROMISED",
-          "messages": [
-            {
-              "locale": "en_US",
-              "text": "Delivery must not be after the promised date."
-            }
-          ]
-        }
+        "field": "/Order/DeliveryDate",
+        "condition": "AllFieldsFilled(DeliveryDate, PromisedDate) And DifferenceInDays(PromisedDate, DeliveryDate) > 0",
+        "code": "DELIVERY_AFTER_PROMISED",
+        "messages": [
+          {
+            "locale": "en_US",
+            "text": "Delivery must not be after the promised date."
+          }
+        ]
       }
     ],
     "expect": {

@@ -201,7 +201,7 @@ Assume NO prior A12/rulekit knowledge; use ONLY:
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
 Build the ordered op-record list that satisfies it; you may PREVIEW with \`apply --dry-run\` (writes nothing) to confirm before answering. Return ONLY JSON — each op-record's fields are the verb's params (manifest / \`schema apply\`):
-  {"ops":[ {"target":"field","op":"add","group":"…","name":"…","kind":"…"}, {"target":"rule","op":"add","spec":{"field":"…","condition":"<DSL>","code":"…","messages":[{"locale":"…","text":"…"}]}} ]}`
+  {"ops":[ {"target":"field","op":"add","group":"…","name":"…","kind":"…"}, {"target":"rule","op":"add","field":"…","condition":"<DSL>","code":"…","messages":[{"locale":"…","text":"…"}]} ]}`
 }
 
 function deleteSafetyPrompt(task) {

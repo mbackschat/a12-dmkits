@@ -15,17 +15,15 @@
       {
         "target": "rule",
         "op": "add",
-        "spec": {
-          "field": "/Order/Discount",
-          "condition": "FieldFilled(Discount) And [Discount] < 0",
-          "code": "DISCOUNT_NEGATIVE",
-          "messages": [
-            {
-              "locale": "en_US",
-              "text": "Discount must not be negative."
-            }
-          ]
-        }
+        "field": "/Order/Discount",
+        "condition": "FieldFilled(Discount) And [Discount] < 0",
+        "code": "DISCOUNT_NEGATIVE",
+        "messages": [
+          {
+            "locale": "en_US",
+            "text": "Discount must not be negative."
+          }
+        ]
       }
     ],
     "expect": {
