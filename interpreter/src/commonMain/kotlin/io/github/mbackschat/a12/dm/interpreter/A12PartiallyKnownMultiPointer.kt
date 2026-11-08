@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.workspace.immutableListSnapshot
+import kotlin.jvm.JvmSynthetic
 
 /**
  * A12's `PartiallyKnownDocumentMultiPointer` — the addressing type the **message channel** uses.
@@ -76,7 +77,13 @@ class A12PartiallyKnownMultiPointer private constructor(
             is UnknownIndexKey.Instant -> publishedIndexValue(key)
         }
 
-    /** This pointer carrying [key], which only a pointer to the [UNKNOWN] row can carry. */
+    /**
+     * This pointer carrying [key], which only a pointer to the [UNKNOWN] row can carry.
+     *
+     * `@JvmSynthetic` because Kotlin emits an `internal` member as `ACC_PUBLIC`, which would put the internal
+     * [UnknownIndexKey] on this public type's Java surface (`PublicPreparationApiSurfaceTest`).
+     */
+    @JvmSynthetic
     internal fun withUnknownIndexKey(key: UnknownIndexKey): A12PartiallyKnownMultiPointer {
         require(UNKNOWN in repetitionIndexes) { "only a pointer to the unknown row carries a missed key: $this" }
         return A12PartiallyKnownMultiPointer(fullName, repetitionIndexes, key)
