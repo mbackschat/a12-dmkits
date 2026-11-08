@@ -28,10 +28,10 @@
 
 | observation | basis | disposition |
 |---|---|---|
-| `typedef modify` with `{"kind":"NUMBER","number":{"maxFractionalDigits":3}}` drops `unit`, `min` and `minFractionalDigits`; `kind` alone leaves `{"maxFractionalDigits":0}`; both `applied`, no diagnostic | reproduced with the native binary | defect class shared with `field modify` ([task 02 report](2026-11-08-02-registration-field-constraints.md)) |
-| `schema typedef modify` serves the add contract (`$id …/typedef-add.schema.json`, "INPUT of … typedef add") | `schema typedef modify` | defect: the modify contract, including its replace semantics, is undiscoverable |
+| `typedef modify` with `{"kind":"NUMBER","number":{"maxFractionalDigits":3}}` drops `unit`, `min` and `minFractionalDigits`; `kind` alone leaves `{"maxFractionalDigits":0}`; both `applied`, no diagnostic | reproduced with the native binary | defect class shared with `field modify` ([task 02 report](2026-11-08-02-registration-field-constraints.md)); fixed in `546ae2cf9` |
+| `schema typedef modify` serves the add contract (`$id …/typedef-add.schema.json`, "INPUT of … typedef add") | `schema typedef modify` | defect, fixed in `546ae2cf9`: the shared schema now names `typedef modify` and its whole-type replacement, as `computation-add` does for `computation modify` |
 | both agents extracted only the `number` block from a 20 KB `schema typedef add` (`grep -A12 '"number"'`, a python filter) | transcripts | evidence for a per-kind schema drill-down; the agent's "51 KB" was three schemas chained in one command |
-| `model describe` omits typedefs, the field-to-typedef link, `required` and rules | `model describe` output | discoverability gap, raised by both runs |
+| `model describe` omits typedefs, the field-to-typedef link, `required` and rules | `model describe` output | discoverability gap, raised by both runs ([CG30](../../docs/CLI-CONFORMANCE-GAPS.md#cg30)) |
 | the second kernel diagnostic for `field add --name "Bad Name"` has no `code` | `field add --dry-run` | likely faithful: the kernel message carries no `[CODE]` suffix; not verified at the kernel layer |
 | a euro currency cannot be expressed; NUMBER `unit` is `AMOUNT`, `PERCENT` or `PERMILLE` | `schema typedef add` | not a dmtool gap unless A12 has a currency concept; not pursued |
 

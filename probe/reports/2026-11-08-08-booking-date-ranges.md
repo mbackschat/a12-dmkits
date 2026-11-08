@@ -29,11 +29,11 @@ Each row was re-run against the native binary; the agents' own claims were not t
 
 | observation | basis | disposition |
 |---|---|---|
-| The skill's `FieldFilled(<errorField>)` remedy for an unreferenced error field narrows a model-level rule to documents where that field is filled | haiku's stored T3 condition; [`skill/SKILL.md`](../../skill/SKILL.md) error-field paragraph | skill defect; fix with a non-narrowing way to reference the error field, verified with `rule check` |
-| `[DailyStartTime] < Time(9)` is rejected `MVK_INVALID_ENTITY` with the corrective "use its ABSOLUTE path" | `rule check` | misleading enricher fix: there is no `Time` function, and the field path is already resolvable |
-| `AllFieldsFilled(BookingPeriod)` with one operand is rejected `MVK_PARAMSIZE_INVALIDN`, whose corrective names only `FieldValuesNotUnique` | `rule check` | enricher gap for the other constructs that raise this code |
-| field kinds are spelled `DATERANGE`, `DATETIME`, `DATEFRAGMENT`, `ENUM` on input and `DATE_RANGE`, `DATE_TIME`, `DATE_FRAGMENT`, `ENUMERATION` on output; the parser silently accepts both | `schema field add`, `field read`, `FieldSpec.java` | hidden alias; choosing one spelling is a contract decision |
-| `model describe` lists no rules and no `required` flags; the agents found `model read` and `field read` per field | `model describe` output; raised by both runs | discoverability gap |
+| The skill's `FieldFilled(<errorField>)` remedy for an unreferenced error field narrows a model-level rule to documents where that field is filled | haiku's stored T3 condition; [`skill/SKILL.md`](../../skill/SKILL.md) error-field paragraph | skill defect, fixed in `b8fa81768` (the skill now points to the in-row error field; `AggregateErrorFieldLawsTest` locks both placements on the kernel runtime) |
+| `[DailyStartTime] < Time(9)` is rejected `MVK_INVALID_ENTITY` with the corrective "use its ABSOLUTE path" | `rule check` | misleading enricher fix: `Time` exists and takes quoted constants (`Time("9")` is accepted), so the unquoted `9` is resolved as a field name; [CG29](../../docs/CLI-CONFORMANCE-GAPS.md#cg29). *Corrected 2026-11-08: this row first said there is no `Time` function; `dmtool operators Time` serves it.* |
+| `AllFieldsFilled(BookingPeriod)` with one operand is rejected `MVK_PARAMSIZE_INVALIDN`; the corrective leads with `FieldValuesNotUnique` and then gives the general remedy (two fields, one group, or `FieldFilled` for a single field) | `rule check` | not a defect. *Corrected 2026-11-08: this row first said the corrective names only `FieldValuesNotUnique`.* |
+| field kinds are spelled `DATERANGE`, `DATETIME`, `DATEFRAGMENT`, `ENUM` on input and `DATE_RANGE`, `DATE_TIME`, `DATE_FRAGMENT`, `ENUMERATION` on output; the parser silently accepts both | `schema field add`, `field read`, `FieldSpec.java` | hidden alias; choosing one spelling is a contract decision ([CG28](../../docs/CLI-CONFORMANCE-GAPS.md#cg28)) |
+| `model describe` lists no rules and no `required` flags; the agents found `model read` and `field read` per field | `model describe` output; raised by both runs | discoverability gap ([CG30](../../docs/CLI-CONFORMANCE-GAPS.md#cg30)) |
 
 ## Replay prompts
 
@@ -41,4 +41,4 @@ The five turns of [task 08](../tasks/08-booking-date-ranges.md), verbatim, after
 
 ## Self-audit
 
-Both agents wrote their own `REPORT.md` and classified their own mistakes (a short rule name to `rule read`, an invented `Time()` function) separately from tool findings. Neither read model JSON directly.
+Both agents wrote their own `REPORT.md` and classified their own mistakes (a short rule name to `rule read`, an unquoted `Time(9)` argument, which its author classified as an invented function) separately from tool findings. Neither read model JSON directly.

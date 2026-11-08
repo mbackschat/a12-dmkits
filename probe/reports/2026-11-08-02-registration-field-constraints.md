@@ -27,7 +27,7 @@
 
 | observation | basis | disposition |
 |---|---|---|
-| `field modify` with `kind` and a partial `string` block stores only that block; `kind` alone clears the string config; with neither, the config is kept; all `applied`, no diagnostic | reproduced with the native binary | defect class shared with `typedef modify`; the schema's "absent ones are left untouched" contradicts it |
+| `field modify` with `kind` and a partial `string` block stores only that block; `kind` alone clears the string config; with neither, the config is kept; all `applied`, no diagnostic | reproduced with the native binary | defect class shared with `typedef modify`; the schema's "absent ones are left untouched" contradicts it. Fixed in `546ae2cf9`: the schema states the replacement and every lost key is reported as `RK_MODIFY_REMOVES_CONFIG` |
 | `config modify --add-locale de_DE` is refused until every message and enum label has a German text, and lists each gap | dry-run | works as intended; both agents completed T3 from the listed gaps |
 
 ## Replay prompts
