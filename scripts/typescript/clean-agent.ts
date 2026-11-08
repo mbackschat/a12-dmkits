@@ -21,19 +21,25 @@ const { spawn } = require("node:child_process");
  * which asks a clean agent for the global file's canary next to a plain agent that must know it.
  *
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --model sonnet [--effort xhigh] \
- *       [--tools Bash,Read] [--schema schema.json] [--cwd DIR] [--turns turns.json] --transcript out.jsonl < prompt.txt
+ *       [--tools Bash,Read] [--schema schema.json] [--cwd DIR] [--writable DIR,…] [--turns turns.json] \
+ *       --transcript out.jsonl < prompt.txt
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --self-test
  *   scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --check-transcript FILE --tools Bash,Read
  *
  * `--turns` takes a JSON array of prompts and runs them as successive turns of ONE session, each sent only after
  * the previous turn's result, as a probe needs; without it the prompt is read from stdin as the single turn.
  *
+ * A clean session also has no permission rules, so it runs under the OS sandbox: Bash is allowed without a
+ * prompt but can write only to the working directory and the `--writable` directories, and the Write and Edit
+ * tools are accepted there. Anything else is refused, and a refused call is reported as a problem, because a
+ * session whose tool calls were refused measured the harness, not dmtool.
+ *
  * `--check-transcript` re-checks a finished session, for the probe's audit: a transcript with no init event
  * (an Agent-tool subagent's) or a wider one fails, since only a clean launch writes a clean init event.
  */
 
 type Init = Record<string, unknown> | undefined;
-type Options = { model: string; effort?: string; tools: string[]; schema?: unknown };
+type Options = { model: string; effort?: string; tools: string[]; schema?: unknown; writable?: string[] };
 type Run = { problems: string[]; structured: unknown; resultText: string | undefined; isError: boolean };
 
 /** The documented switches for the two context sources a flag does not name (Claude Code env-vars page). */
@@ -51,7 +57,14 @@ function cleanAgentArgs(options: Options): string[] {
     // Excluding the user source is what drops ~/.claude/CLAUDE.md and the user's plugins and skills
     // (measured 2026-11-08); `project` reads only the empty working directory's settings.
     "--setting-sources", "project",
-    "--settings", JSON.stringify({ autoMemoryEnabled: false }),
+    "--settings", JSON.stringify({
+      autoMemoryEnabled: false,
+      // No allow rules exist here, so the OS sandbox is what lets Bash run; with the escape hatch off, a
+      // command the sandbox blocks fails instead of asking for an approval nobody can give.
+      sandbox: { enabled: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false },
+    }),
+    "--permission-mode", "acceptEdits",
+    ...(options.writable ?? []).flatMap(dir => ["--add-dir", dir]),
     "--strict-mcp-config",
     "--tools", options.tools.join(","),
     "--no-session-persistence",
@@ -77,6 +90,32 @@ function isolationProblems(init: Init, tools: string[]): string[] {
     problems.push(`tools ${JSON.stringify(granted)} differ from the requested ${JSON.stringify(tools)}`);
   }
   return problems;
+}
+
+/** The harness's own refusal messages, as Claude Code 2.1.319 words them (measured 2026-11-08). */
+const REFUSAL = /requires approval|haven't granted it yet|needs approval|was blocked\. For security/;
+
+/** Every tool result in which the harness, not the tool, refused the call. */
+function refusals(text: string): string[] {
+  const found: string[] = [];
+  for (const line of text.split("\n")) {
+    if (!line.includes('"tool_result"')) continue;
+    let event: { message?: { content?: Array<{ type?: string; is_error?: boolean; content?: unknown }> } };
+    try { event = JSON.parse(line); } catch { continue; }
+    for (const block of event.message?.content ?? []) {
+      const content = typeof block.content === "string" ? block.content : JSON.stringify(block.content ?? "");
+      if (block.type === "tool_result" && block.is_error && REFUSAL.test(content)) found.push(content.slice(0, 200));
+    }
+  }
+  return found;
+}
+
+/** Everything that makes a session's transcript unusable as a cold-agent measurement. */
+function transcriptProblems(text: string, tools: string[]): string[] {
+  return [
+    ...isolationProblems(readTranscript(text).init, tools),
+    ...refusals(text).map(content => `the harness refused a tool call: ${content}`),
+  ];
 }
 
 /** Context files Claude Code would discover from `dir`: the directory itself and every ancestor. */
@@ -110,7 +149,7 @@ function readTranscript(text: string): { init: Init; structured: unknown; result
 
 /** The isolation problems of a finished session's transcript, read from its file. */
 function checkTranscript(file: string, tools: string[]): string[] {
-  return isolationProblems(readTranscript(fs.readFileSync(file, "utf8")).init, tools);
+  return transcriptProblems(fs.readFileSync(file, "utf8"), tools);
 }
 
 /** Feeds a session its turns one at a time: the next user message goes out only when the previous turn's result arrives. */
@@ -162,8 +201,9 @@ function runCleanAgent(options: Options & { turns: string[]; cwd?: string; trans
     feeder.start();
     child.on("close", () => {
       fs.closeSync(out);
-      const read = readTranscript(fs.readFileSync(options.transcript, "utf8"));
-      resolve({ problems: isolationProblems(read.init, options.tools), structured: read.structured, resultText: read.resultText, isError: read.isError });
+      const text = fs.readFileSync(options.transcript, "utf8");
+      const read = readTranscript(text);
+      resolve({ problems: transcriptProblems(text, options.tools), structured: read.structured, resultText: read.resultText, isError: read.isError });
     });
   });
 }
@@ -221,7 +261,7 @@ async function main(argv: string[]): Promise<number> {
   const model = option(argv, "--model");
   const transcript = option(argv, "--transcript");
   if (!model || !transcript) {
-    console.error("usage: clean-agent.ts --model M [--effort E] [--tools Bash,Read] [--schema FILE] [--cwd DIR] [--turns FILE] --transcript FILE < prompt");
+    console.error("usage: clean-agent.ts --model M [--effort E] [--tools Bash,Read] [--schema FILE] [--cwd DIR] [--writable DIR,…] [--turns FILE] --transcript FILE < prompt");
     console.error("       clean-agent.ts --self-test");
     return 2;
   }
@@ -229,6 +269,7 @@ async function main(argv: string[]): Promise<number> {
   const turnsFile = option(argv, "--turns");
   const run = await runCleanAgent({
     model, effort: option(argv, "--effort"), tools: (option(argv, "--tools") ?? "Bash").split(","),
+    writable: option(argv, "--writable")?.split(","),
     schema: schemaFile ? JSON.parse(fs.readFileSync(schemaFile, "utf8")) : undefined,
     cwd: option(argv, "--cwd"), transcript,
     turns: turnsFile ? JSON.parse(fs.readFileSync(turnsFile, "utf8")) : [fs.readFileSync(0, "utf8")],
@@ -237,6 +278,6 @@ async function main(argv: string[]): Promise<number> {
   return run.problems.length ? 1 : 0;
 }
 
-module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, runCleanAgent, TurnFeeder };
+module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, runCleanAgent, TurnFeeder };
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));

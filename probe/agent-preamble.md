@@ -15,14 +15,9 @@ ONLY these two sources — do not assume command names, flags, or rule/condition
 2. The tool's own self-description: `dmtool --help`, `dmtool manifest`, `dmtool schema ...`, per-verb `--help`, etc.
 If you're unsure how to do something, consult those — that's exactly what they're for.
 
-## How to run `dmtool` (environment quirk — read carefully)
-- Do all your work in the directory `/tmp/rk-probe-sandbox/work`. `cd` into it first (your shell keeps the working directory between commands).
-- Your shell does NOT keep environment variables between separate commands. The `dmtool` binary is in `/tmp/rk-probe-sandbox/bin`, so put it on PATH inline on EVERY command that calls it:
-
-    PATH="/tmp/rk-probe-sandbox/bin:$PATH" dmtool <args>
-
-  For example: `PATH="/tmp/rk-probe-sandbox/bin:$PATH" dmtool manifest`
-  This PATH prefix is just how this sandbox is wired; the tool itself is plain `dmtool`.
+## How to run `dmtool`
+- Do all your work in the directory `/tmp/rk-probe-sandbox/work`, where your session starts.
+- `dmtool` is on your PATH: run it as plain `dmtool <args>`.
 
 ## How to run this session
 - There are one or more requests from the analyst, labelled TURN 1, TURN 2, … They arrive one after another. Process them strictly in order.

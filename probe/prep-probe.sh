@@ -71,10 +71,12 @@ mkdir -p "$SANDBOX/bin" "$SANDBOX/work"
 # The logging `dmtool` shim: record the invocation + full stdout + stderr + exit code to $LOG, then replay
 # them so the agent sees exactly what the real binary produced (`dmtool … | jq` still works — output is
 # captured then re-emitted). NATIVE + LOG are baked as absolute paths; the shim's own runtime vars are \$-escaped.
+# Its capture files live in the sandbox, not the system temp dir: macOS `mktemp` ignores TMPDIR and writes under
+# /var/folders, which the clean session's OS sandbox refuses (measured 2026-11-08).
 cat > "$SANDBOX/bin/dmtool" <<SHIM
 #!/usr/bin/env bash
 printf '\n\$ dmtool %s\n' "\$*" >> "$LOG"
-o="\$(mktemp)"; e="\$(mktemp)"
+o="\$(mktemp "$SANDBOX/.out.XXXXXX")"; e="\$(mktemp "$SANDBOX/.err.XXXXXX")"
 "$NATIVE" "\$@" >"\$o" 2>"\$e"; code=\$?
 { echo "--- stdout:"; cat "\$o"; echo "--- stderr:"; cat "\$e"; echo "[exit \$code]"; } >> "$LOG"
 cat "\$o"; cat "\$e" >&2

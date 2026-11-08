@@ -71,9 +71,10 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 #    it (step 6), it does not author it. probe-turns.ts builds the turns; clean-agent.ts sends each only after
 #    the previous turn's result, so the agent cannot look ahead. A long session goes to the background:
 scripts/run-typescript.sh probe-turns scripts/typescript/probe-turns.ts probe/tasks/<task>.md > /tmp/rk-probe-sandbox/turns.json
-scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts --model sonnet \
-  --tools Bash,Read,Write,Edit,Glob,Grep --cwd /tmp/rk-probe-sandbox/work \
-  --turns /tmp/rk-probe-sandbox/turns.json --transcript /tmp/rk-probe-sandbox/transcript.jsonl
+PATH="/tmp/rk-probe-sandbox/bin:$PATH" scripts/run-typescript.sh clean-agent scripts/typescript/clean-agent.ts \
+  --model sonnet --tools Bash,Read,Write,Edit,Glob,Grep --cwd /tmp/rk-probe-sandbox/work \
+  --writable /tmp/rk-probe-sandbox --turns /tmp/rk-probe-sandbox/turns.json \
+  --transcript /tmp/rk-probe-sandbox/transcript.jsonl
 
 # 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
 #    Pass the clean session's transcript. STOP and discard if it says SUSPECT:

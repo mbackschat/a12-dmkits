@@ -4,7 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, TurnFeeder } = require("./clean-agent.ts");
+const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, TurnFeeder } = require("./clean-agent.ts");
 
 /** The init event a clean run printed on Claude Code 2.1.319 (measured 2026-11-08), trimmed to the checked keys. */
 const CLEAN_INIT = {
@@ -61,12 +61,17 @@ test("a context file in the working directory or any ancestor is reported", (t: 
 });
 
 test("the launch arguments carry every isolation switch", () => {
-  const args = cleanAgentArgs({ model: "sonnet", effort: "xhigh", tools: ["Bash", "Read"], schema: { type: "object" } });
+  const args = cleanAgentArgs({ model: "sonnet", effort: "xhigh", tools: ["Bash", "Read"], schema: { type: "object" }, writable: ["/tmp/a", "/tmp/b"] });
   for (const flag of ["-p", "--disable-slash-commands", "--no-session-persistence", "--strict-mcp-config"]) {
     assert.ok(args.includes(flag), flag);
   }
   assert.equal(args[args.indexOf("--setting-sources") + 1], "project");
-  assert.deepEqual(JSON.parse(args[args.indexOf("--settings") + 1]), { autoMemoryEnabled: false });
+  assert.deepEqual(JSON.parse(args[args.indexOf("--settings") + 1]), {
+    autoMemoryEnabled: false,
+    sandbox: { enabled: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false },
+  });
+  assert.equal(args[args.indexOf("--permission-mode") + 1], "acceptEdits");
+  assert.deepEqual(args.flatMap((a: string, i: number) => (a === "--add-dir" ? [args[i + 1]] : [])), ["/tmp/a", "/tmp/b"]);
   assert.equal(args[args.indexOf("--tools") + 1], "Bash,Read");
   assert.equal(args[args.indexOf("--input-format") + 1], "stream-json");
   assert.equal(args[args.indexOf("--effort") + 1], "xhigh");
@@ -110,4 +115,26 @@ test("the turn feeder sends the next turn only after the previous turn's result"
   feeder.onLine(JSON.stringify({ type: "result", subtype: "error_during_execution" }));
   assert.equal(ended, true, "the input closes after the last turn's result, even a failed one");
   assert.equal(sent.length, 2);
+});
+
+/**
+ * A clean session has no allow rules, so whatever the OS sandbox does not cover is refused; on 2026-11-08 six
+ * probe sessions ran with every dmtool call refused and still exited 0. A refusal is therefore an instrument
+ * failure that must surface, never a quiet turn of the measured agent.
+ */
+test("a call the harness refused is reported, a failing tool call is not", (t: { after(f: () => void): void }) => {
+  const result = (content: string, is_error = true) => JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", is_error, content }] } });
+  const lines = [
+    result("This command requires approval"),
+    result("Claude requested permissions to read from /tmp/s/SKILL.md, but you haven't granted it yet."),
+    result("Output redirection to '/tmp/s/work/R.md' needs approval."),
+    result("dmtool: rule check rejected the condition"),
+    result("Exit code 1"),
+  ];
+  assert.equal(refusals(lines.join("\n")).length, 3);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clean-agent-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, "t.jsonl");
+  fs.writeFileSync(file, [JSON.stringify(CLEAN_INIT), lines[0]].join("\n") + "\n");
+  assert.deepEqual(checkTranscript(file, ["Bash"]), ["the harness refused a tool call: This command requires approval"]);
 });

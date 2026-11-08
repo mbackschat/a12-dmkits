@@ -24,6 +24,9 @@ const ROOT: string = path.resolve(__dirname, "../..");
 const WORKFLOW = path.join(ROOT, "eval/benchmark.workflow.js");
 const SANDBOX = "/tmp/rk-eval-sandbox";
 const TOOLS = ["Bash", "Read", "Write"];
+// Producers edit the sandbox's model copies and write their op files under /tmp; everything else, the
+// repository included, stays read-only under the OS sandbox.
+const WRITABLE = ["/tmp"];
 
 type Cell = { key: string; label: string; model: string; effort?: string; prompt: string; schema: unknown };
 
@@ -101,7 +104,7 @@ async function main(argv: string[]): Promise<number> {
   console.error(`eval-produce: ${cells.length} cell(s), at most ${option(argv, "--concurrency") ?? 4} at a time`);
   const runs = await pool(cells, Number(option(argv, "--concurrency") ?? 4), async cell => {
     const transcript = path.join(out, "transcripts", `${cell.key.replace(/[^A-Za-z0-9._-]+/g, "_")}.jsonl`);
-    const run = await runCleanAgent({ model: cell.model, effort: cell.effort, tools: TOOLS, schema: cell.schema, turns: [cell.prompt], transcript, env });
+    const run = await runCleanAgent({ model: cell.model, effort: cell.effort, tools: TOOLS, schema: cell.schema, turns: [cell.prompt], writable: WRITABLE, transcript, env });
     const breaches = boundaryBreaches(fs.readFileSync(transcript, "utf8"), ROOT, material ? [material] : []);
     console.error(`  ${cell.label}: ${run.isError ? "error" : "done"}${run.problems.length + breaches.length ? " — REFUSED" : ""}`);
     return { cell, run, breaches };
