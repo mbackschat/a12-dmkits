@@ -79,6 +79,14 @@ function cleanAgentArgs(options: Options): string[] {
   return args;
 }
 
+/**
+ * The tools a clean session's init event lists: the requested ones, plus the StructuredOutput tool through which
+ * Claude Code returns a `--json-schema` answer (measured 2026-11-08), which is the answer channel, not context.
+ */
+function grantedTools(options: Options): string[] {
+  return options.schema !== undefined ? [...options.tools, "StructuredOutput"] : options.tools;
+}
+
 /** Every reason this init event shows a context wider than a cold agent with exactly `tools` would have. */
 function isolationProblems(init: Init, tools: string[]): string[] {
   if (!init) return ["the transcript carries no init event"];
@@ -215,7 +223,7 @@ function runCleanAgent(options: Options & { turns: string[]; cwd?: string; trans
       fs.closeSync(out);
       const text = fs.readFileSync(options.transcript, "utf8");
       const read = readTranscript(text);
-      resolve({ problems: transcriptProblems(text, options.tools), structured: read.structured, resultText: read.resultText, isError: read.isError });
+      resolve({ problems: transcriptProblems(text, grantedTools(options)), structured: read.structured, resultText: read.resultText, isError: read.isError });
     });
   });
 }
@@ -290,6 +298,6 @@ async function main(argv: string[]): Promise<number> {
   return run.problems.length ? 1 : 0;
 }
 
-module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, runCleanAgent, TurnFeeder };
+module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, runCleanAgent, TurnFeeder, grantedTools };
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));

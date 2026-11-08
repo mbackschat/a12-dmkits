@@ -4,7 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, TurnFeeder } = require("./clean-agent.ts");
+const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, TurnFeeder, grantedTools } = require("./clean-agent.ts");
 
 /** The init event a clean run printed on Claude Code 2.1.319 (measured 2026-11-08), trimmed to the checked keys. */
 const CLEAN_INIT = {
@@ -140,4 +140,11 @@ test("a call the harness refused is reported, a failing tool call is not", (t: {
   const file = path.join(dir, "t.jsonl");
   fs.writeFileSync(file, [JSON.stringify(CLEAN_INIT), lines[0]].join("\n") + "\n");
   assert.deepEqual(checkTranscript(file, ["Bash"]), ["the harness refused a tool call: This command requires approval"]);
+});
+
+/** `--json-schema` makes Claude Code add its own StructuredOutput tool; it is the answer channel, not wider context. */
+test("a schema run expects the structured-output tool beside the requested ones", () => {
+  assert.deepEqual(grantedTools({ model: "haiku", tools: ["Bash"] }), ["Bash"]);
+  assert.deepEqual(grantedTools({ model: "haiku", tools: ["Bash"], schema: { type: "object" } }), ["Bash", "StructuredOutput"]);
+  assert.deepEqual(isolationProblems({ ...CLEAN_INIT, tools: ["Bash", "StructuredOutput"] }, grantedTools({ model: "haiku", tools: ["Bash"], schema: {} })), []);
 });
