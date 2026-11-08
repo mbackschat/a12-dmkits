@@ -55,7 +55,7 @@ Behaviour changes beside the format: relative paths may climb to the model root 
 | M6 | `WorkspaceTypeDefinitionCollisionKernelTest`, `CheckerBasicSentenceOrderAgreementTest` |
 | M7 | `ElementMemberOrderTest` |
 | M8 | `CheckerBasicSentenceAgreementTest`, `CheckerConverterSentenceAgreementTest`, `CheckerModelFrameAgreementTest`, `CheckerEmptyMemberAgreementTest`, `MessageGroupArgumentAgreementTest`, `MessageGroupEventAgreementTest`, `MessageNamePositionAgreementTest`, `MessageParameterMembershipLawsTest`, `ModelHeaderSlotLawsTest`, `GroupOperandAndKeyResolverClassLawsTest`, `StarredNonRepeatableReachLawsTest`, `CheckOnlyFrameRuntimeDiffTest`, `AggMalformedDiffTest`, `NestedGroupFillCountLawsTest`, `NestedOverLimitAbsorptionDiffTest`, `KernelProbeRuleRaiseTest` |
-| B5 | `InterpreterMeasurementCurrencyGuardTest` |
+| B5 | `scripts/typescript/measurement-currency.test.ts` |
 
 Each batch gets its acceptance matrix (row, oracle, predicted outcome, discriminator) before its first run, per the [witness-grid procedure](TESTING-SPEC.md#witness-grid-design). A changed kernel verdict is a measured fact: it amends the owning [KERNEL-FINDINGS](KERNEL-FINDINGS.md) entry in place and updates the checker or interpreter where an agreement test now differs.
 

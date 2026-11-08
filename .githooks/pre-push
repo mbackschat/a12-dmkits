@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ACTIONLINT_COMMAND="${ACTIONLINT:-actionlint}"
 
 "$ROOT/scripts/check-infographic-freshness.sh"
+"$ROOT/scripts/run-typescript.sh" "measurement currency" "$ROOT/scripts/typescript/measurement-currency.ts"
 
 if ! command -v "$ACTIONLINT_COMMAND" >/dev/null 2>&1; then
   cat >&2 <<'MESSAGE'
