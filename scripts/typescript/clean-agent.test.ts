@@ -4,7 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, TurnFeeder, grantedTools } = require("./clean-agent.ts");
+const { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, TurnFeeder, grantedTools, sessionPlan } = require("./clean-agent.ts");
 
 /** The init event a clean run printed on Claude Code 2.1.319 (measured 2026-11-08), trimmed to the checked keys. */
 const CLEAN_INIT = {
@@ -147,4 +147,16 @@ test("a schema run expects the structured-output tool beside the requested ones"
   assert.deepEqual(grantedTools({ model: "haiku", tools: ["Bash"] }), ["Bash"]);
   assert.deepEqual(grantedTools({ model: "haiku", tools: ["Bash"], schema: { type: "object" } }), ["Bash", "StructuredOutput"]);
   assert.deepEqual(isolationProblems({ ...CLEAN_INIT, tools: ["Bash", "StructuredOutput"] }, grantedTools({ model: "haiku", tools: ["Bash"], schema: {} })), []);
+});
+
+/**
+ * Concurrent sessions under the OS sandbox all get TMPDIR=/tmp/claude-<uid>, so on 2026-11-08 three eval
+ * producers wrote `$TMPDIR/ops.json` within a second and one validated another's file. Each session therefore
+ * gets its own temp directory, which must also be writable.
+ */
+test("every session gets a private, writable temp directory", () => {
+  const plan = sessionPlan({ model: "haiku", tools: ["Bash"], writable: ["/tmp/work"] }, "/tmp/private-1");
+  assert.equal(plan.env.CLAUDE_CODE_TMPDIR, "/tmp/private-1");
+  assert.equal(plan.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS, "1");
+  assert.deepEqual(plan.args.flatMap((a: string, i: number) => (a === "--add-dir" ? [plan.args[i + 1]] : [])), ["/tmp/work", "/tmp/private-1"]);
 });

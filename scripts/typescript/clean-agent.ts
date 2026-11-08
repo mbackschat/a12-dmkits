@@ -87,6 +87,19 @@ function grantedTools(options: Options): string[] {
   return options.schema !== undefined ? [...options.tools, "StructuredOutput"] : options.tools;
 }
 
+/**
+ * The launch of one session: its arguments and environment, with `tmp` as its private temp directory. Under the
+ * OS sandbox every session's TMPDIR is /tmp/claude-<uid> unless CLAUDE_CODE_TMPDIR moves it, so concurrent
+ * sessions shared files there: three eval producers wrote `$TMPDIR/ops.json` within a second and one validated
+ * another's (2026-11-08). The directory must be writable too, or the sandbox refuses the agent's own scratch files.
+ */
+function sessionPlan(options: Options, tmp: string): { args: string[]; env: Record<string, string> } {
+  return {
+    args: cleanAgentArgs({ ...options, writable: [...(options.writable ?? []), tmp] }),
+    env: { ...CLEAN_ENV, CLAUDE_CODE_TMPDIR: tmp },
+  };
+}
+
 /** Every reason this init event shows a context wider than a cold agent with exactly `tools` would have. */
 function isolationProblems(init: Init, tools: string[]): string[] {
   if (!init) return ["the transcript carries no init event"];
@@ -207,8 +220,9 @@ function runCleanAgent(options: Options & { turns: string[]; cwd?: string; trans
   fs.mkdirSync(path.dirname(options.transcript), { recursive: true });
   const out = fs.openSync(options.transcript, "w");
   return new Promise(resolve => {
-    const child = spawn("claude", cleanAgentArgs(options), {
-      cwd, env: { ...process.env, ...CLEAN_ENV, ...(options.env ?? {}) }, stdio: ["pipe", "pipe", "inherit"],
+    const plan = sessionPlan(options, fs.mkdtempSync(path.join(os.tmpdir(), "clean-agent-tmp-")));
+    const child = spawn("claude", plan.args, {
+      cwd, env: { ...process.env, ...plan.env, ...(options.env ?? {}) }, stdio: ["pipe", "pipe", "inherit"],
     });
     const feeder = new TurnFeeder(options.turns, line => child.stdin.write(line + "\n"), () => child.stdin.end());
     let pending = "";
@@ -298,6 +312,6 @@ async function main(argv: string[]): Promise<number> {
   return run.problems.length ? 1 : 0;
 }
 
-module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, runCleanAgent, TurnFeeder, grantedTools };
+module.exports = { checkTranscript, cleanAgentArgs, CLEAN_ENV, contextFilesAbove, isolationProblems, readTranscript, refusals, runCleanAgent, TurnFeeder, grantedTools, sessionPlan };
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));
