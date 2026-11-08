@@ -6,6 +6,8 @@ This changelog covers the checker and its predicate dependency published through
 
 ## [@VERSION@]
 
+## [0.16.0]
+
 ### Changed
 
 - **BREAKING: checks a DocumentModel as A12 Kernel `31.3.1` does, on model format `29.8.0`.** A model is compatible up to format `29.8.0`, and a mount is read from its group's `includeConfig.reference`, as DM 29 defines it. `DeclaredElement.modelAlias` is now `includedReference`, `UnexpandedMount.alias` is now the nullable `reference`, and `DeclaredReference.refusedByTheReader` and `PreparedModel.resolvableElements` are removed. `PreparedModel` gains `uniquenessCriteria` as its eighth constructor parameter, which shifts its positional `copy` and `componentN` members.
