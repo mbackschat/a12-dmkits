@@ -7,6 +7,8 @@ trap 'rm -rf "$TEST_ROOT"' EXIT
 FIXTURE="$TEST_ROOT/repo"
 HOOK="$FIXTURE/.githooks/pre-push"
 PREFLIGHT="$FIXTURE/scripts/check-infographic-freshness.sh"
+TYPESCRIPT="$FIXTURE/scripts/run-typescript.sh"
+TYPESCRIPT_LOG="$TEST_ROOT/typescript.log"
 ACTIONLINT_STUB="$TEST_ROOT/actionlint"
 ACTIONLINT_LOG="$TEST_ROOT/actionlint.log"
 OUTPUT="$TEST_ROOT/output"
@@ -19,6 +21,11 @@ printf '%s\n' 'name: synthetic' > "$FIXTURE/.github/workflows/ci.yml"
 write_preflight() {
   printf '#!/usr/bin/env bash\necho preflight >> %q\nexit %s\n' "$TEST_ROOT/preflight.log" "$1" > "$PREFLIGHT"
   chmod +x "$PREFLIGHT"
+}
+
+write_typescript() {
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> %q\nexit %s\n' "$TYPESCRIPT_LOG" "$1" > "$TYPESCRIPT"
+  chmod +x "$TYPESCRIPT"
 }
 
 write_actionlint() {
@@ -36,6 +43,7 @@ expect_failure() {
 }
 
 write_preflight 1
+write_typescript 0
 write_actionlint 0
 expect_failure "a failed infographic preflight" env ACTIONLINT="$ACTIONLINT_STUB" /bin/bash "$HOOK"
 [[ ! -e "$ACTIONLINT_LOG" ]] || {
@@ -44,6 +52,14 @@ expect_failure "a failed infographic preflight" env ACTIONLINT="$ACTIONLINT_STUB
 }
 
 write_preflight 0
+write_typescript 1
+expect_failure "interpreter source past its last measurement" env ACTIONLINT="$ACTIONLINT_STUB" /bin/bash "$HOOK"
+[[ ! -e "$ACTIONLINT_LOG" ]] || {
+  echo "pre-push self-test: actionlint ran after the measurement-currency check failed" >&2
+  exit 1
+}
+
+write_typescript 0
 expect_failure "missing actionlint" env ACTIONLINT="$TEST_ROOT/missing-actionlint" /bin/bash "$HOOK"
 grep -Fq 'actionlint is required' "$OUTPUT" || {
   echo "pre-push self-test: the missing-actionlint refusal was not corrective" >&2
@@ -55,6 +71,10 @@ expect_failure "invalid GitHub Actions workflow" env ACTIONLINT="$ACTIONLINT_STU
 
 write_actionlint 0
 env ACTIONLINT="$ACTIONLINT_STUB" /bin/bash "$HOOK" > "$OUTPUT" 2>&1
+grep -Fq 'scripts/typescript/measurement-currency.ts' "$TYPESCRIPT_LOG" || {
+  echo "pre-push self-test: the measurement-currency check did not run" >&2
+  exit 1
+}
 grep -Fq "$FIXTURE/.github/workflows/ci.yml" "$ACTIONLINT_LOG" || {
   echo "pre-push self-test: actionlint did not receive the workflow" >&2
   exit 1
