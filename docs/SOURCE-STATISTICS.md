@@ -15,11 +15,11 @@ Product implementation and examples.
 |---|---:|---:|---:|---:|---:|
 | CSS | 2 | 887 | 750 | 3 | 134 |
 | HTML | 2 | 347 | 335 | 0 | 12 |
-| Java | 550 | 81631 | 54672 | 18715 | 8244 |
+| Java | 563 | 82938 | 55522 | 19005 | 8411 |
 | JavaScript | 2 | 283 | 144 | 122 | 17 |
-| Kotlin | 354 | 70787 | 42353 | 22898 | 5536 |
-| TypeScript | 18 | 3862 | 3294 | 286 | 282 |
-| **Total** | **928** | **157797** | **101548** | **42024** | **14225** |
+| Kotlin | 364 | 71737 | 42947 | 23149 | 5641 |
+| TypeScript | 19 | 3913 | 3324 | 306 | 283 |
+| **Total** | **952** | **160105** | **103022** | **42585** | **14498** |
 
 ### Verification
 
@@ -28,12 +28,12 @@ Automated tests, laws, differentials, consumer checks, and their support code.
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
 | HTML | 4 | 101 | 56 | 45 | 0 |
-| Java | 1313 | 201814 | 139960 | 38861 | 22993 |
+| Java | 1349 | 205028 | 142379 | 39179 | 23470 |
 | JavaScript | 12 | 1036 | 666 | 266 | 104 |
-| Kotlin | 1569 | 225235 | 167853 | 36478 | 20904 |
-| Shell | 12 | 2522 | 1935 | 359 | 228 |
-| TypeScript | 52 | 7566 | 6465 | 604 | 497 |
-| **Total** | **2962** | **438274** | **316935** | **76613** | **44726** |
+| Kotlin | 1583 | 227076 | 169353 | 36676 | 21047 |
+| Shell | 12 | 2533 | 1943 | 361 | 229 |
+| TypeScript | 58 | 7995 | 6817 | 648 | 530 |
+| **Total** | **3018** | **443769** | **321214** | **77175** | **45380** |
 
 ### Tooling
 
@@ -41,17 +41,17 @@ Build, verification, release, deployment, and maintainer tooling.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| BASH | 2 | 362 | 223 | 125 | 14 |
+| BASH | 2 | 364 | 223 | 127 | 14 |
 | CSS | 1 | 1 | 1 | 0 | 0 |
-| Groovy | 20 | 11388 | 8523 | 2447 | 418 |
+| Groovy | 21 | 11408 | 8538 | 2452 | 418 |
 | HTML | 6 | 167 | 156 | 0 | 11 |
 | Java | 1 | 70 | 52 | 10 | 8 |
-| JavaScript | 5 | 1796 | 1512 | 157 | 127 |
+| JavaScript | 5 | 1668 | 1408 | 161 | 99 |
 | Kotlin | 6 | 134 | 123 | 0 | 11 |
 | Python | 1 | 166 | 144 | 1 | 21 |
-| Shell | 62 | 6479 | 4651 | 1327 | 501 |
-| TypeScript | 28 | 3964 | 3362 | 325 | 277 |
-| **Total** | **132** | **24527** | **18747** | **4392** | **1388** |
+| Shell | 62 | 6500 | 4661 | 1337 | 502 |
+| TypeScript | 31 | 4526 | 3771 | 434 | 321 |
+| **Total** | **136** | **25004** | **19077** | **4522** | **1405** |
 
 Maintainers regenerate these tables with the latest locmetry; release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
