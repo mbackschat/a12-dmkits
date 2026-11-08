@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.TypeConfigSnapshot;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
@@ -32,14 +34,16 @@ import picocli.CommandLine.Parameters;
  * typedef is shared <em>by reference</em>, so there is no per-field rewrite (probe 10: without this, a
  * single-place type change forced an {@code inline → field modify each → extract} round-trip). Same two
  * shapes as {@code typedef add}: a simple {@code --kind <K>} re-type, or a rich {@code <spec.json>} carrying
- * the full per-kind config ({@code schema typedef modify}). It is a Local config edit (not a reference-
- * rewriting refactor): the typedef must already exist (else {@code RK_NO_SUCH_TYPEDEF}, nothing written),
- * and the changed model is re-bound through the kernel — if the propagated change breaks a typed field or a
- * dependent rule/computation, the result is a {@code rejected} envelope and nothing is written (atomic).
+ * the full per-kind config ({@code schema typedef modify}); either replaces the whole type, and each config key
+ * it loses is reported as {@code RK_MODIFY_REMOVES_CONFIG}, because the loss reaches every typed field. It
+ * is a Local config edit (not a reference-rewriting refactor): the typedef must already exist (else
+ * {@code RK_NO_SUCH_TYPEDEF}, nothing written), and the changed model is re-bound through the kernel — if the
+ * propagated change breaks a typed field or a dependent rule/computation, the result is a {@code rejected}
+ * envelope and nothing is written (atomic).
  * ({@code --kind} and the spec are mutually exclusive.)
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Change a type definition's config in one place (--id); typed fields inherit it. Simple via --kind, or rich via a <spec.json>.")
+        description = "Change a type definition's config in one place (--id); typed fields inherit it. Simple via --kind, or rich via a <spec.json>; either replaces the whole type, warning for each config key left out.")
 final class TypedefModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -90,9 +94,11 @@ final class TypedefModifyCommand extends BaseCommand {
             return fail("pass EITHER --kind <K> (a bare easy kind) OR a <spec.json> (rich config), not both");
         }
 
+        TypeConfigSnapshot before = TypeConfigSnapshot.ofTypedef(doc, id);
+        JsonNode spec = MissingNode.getInstance();   // a bare --kind carries no config key
         try {
             if (specPath != null) {
-                JsonNode spec = MAPPER.readTree(JsonInput.read(specPath, "<spec.json>"));
+                spec = MAPPER.readTree(JsonInput.read(specPath, "<spec.json>"));
                 Optional<Integer> rejected = rejectInvalidSpec("typedef-add", spec);
                 if (rejected.isPresent()) {
                     return rejected.get();
@@ -122,6 +128,7 @@ final class TypedefModifyCommand extends BaseCommand {
                 .summaries("would modify typedef " + id,
                         "modified typedef " + id)
                 .changed(changed)
+                .advisories(before.removedKeys(id, TypeConfigSnapshot.ofTypedef(doc, id), spec))
                 .json(resultJson)
                 .gatedBy(ConsistencyEvidence.of(doc))
                 .dryRun(dryRun)

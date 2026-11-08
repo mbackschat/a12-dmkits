@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/typedef-add.schema.json",
   "title": "typedef-add-spec",
-  "description": "INPUT of `dmtool -m <model> typedef add --id <id> <spec.json>`: a reusable type, given as `kind` plus the same per-kind block a field takes in `field-add` (an ENUM declares `enum.values`, a restricted STRING `string.pattern` or a length). It carries only the type: group, name, requiredness, label and metadata keys are rejected with RK_UNKNOWN_ARG, and its descriptions and annotations are set with `meta <id>`. `typedef add --id <id> --kind <K>` covers a bare easy kind; this spec covers the rich ENUM and restricted kinds. Validated against the real kernel before writing. (`--kind` and this spec are mutually exclusive.)",
+  "description": "INPUT of `dmtool -m <model> typedef add --id <id> <spec.json>` and `typedef modify --id <id> <spec.json>`: a reusable type, given as `kind` plus the same per-kind block a field takes in `field-add` (an ENUM declares `enum.values`, a restricted STRING `string.pattern` or a length). It carries only the type: group, name, requiredness, label and metadata keys are rejected with RK_UNKNOWN_ARG, and its descriptions and annotations are set with `meta <id>`. `typedef add --id <id> --kind <K>` covers a bare easy kind; this spec covers the rich ENUM and restricted kinds. Modify replaces the whole type for every field typed by it, so a key left out is lost (warned RK_MODIFY_REMOVES_CONFIG). Validated against the real kernel before writing. (`--kind` and this spec are mutually exclusive.)",
   "type": "object",
   "required": ["kind"],
   "additionalProperties": false,

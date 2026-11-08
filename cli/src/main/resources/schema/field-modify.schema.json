@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-modify.schema.json",
   "title": "field-modify-spec",
-  "description": "INPUT of `dmtool -m <model> field modify <spec.json>`: a partial semantic edit of an existing field, located by `group` + `name`. `kind` or `typedef` re-types it; required, helperText, requiredMessages, global and transient edit its field-specific properties; labels, descriptions and annotations belong to `dmtool meta <ref>`. Every present aspect is applied, absent ones are left untouched. `additionalProperties:false` is enforced: a retired metadata key gets RK_UNKNOWN_ARG naming its `meta` replacement.",
+  "description": "INPUT of `dmtool -m <model> field modify <spec.json>`: a partial semantic edit of an existing field, located by `group` + `name`. `kind` or `typedef` re-types it; required, helperText, requiredMessages, global and transient edit its field-specific properties; labels, descriptions and annotations belong to `dmtool meta <ref>`. Every present aspect is applied and absent ones are left untouched, but the type is one aspect: `kind` or `typedef` with its per-kind block replaces the whole type, so `kind` alone clears the config and a key left out is lost (warned RK_MODIFY_REMOVES_CONFIG). `additionalProperties:false` is enforced: a retired metadata key gets RK_UNKNOWN_ARG naming its `meta` replacement.",
   "type": "object",
   "required": ["group", "name"],
   "additionalProperties": false,

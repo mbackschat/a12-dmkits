@@ -13,7 +13,7 @@
     "eval-doc.schema.json": 5086,
     "explain.schema.json": 2105,
     "field-add.schema.json": 10761,
-    "field-modify.schema.json": 7833,
+    "field-modify.schema.json": 8029,
     "field-read.schema.json": 2643,
     "group-read.schema.json": 1334,
     "meta-read.schema.json": 542,
@@ -28,7 +28,7 @@
     "result.schema.json": 8862,
     "rule-add.schema.json": 4975,
     "rule-eval.schema.json": 3957,
-    "typedef-add.schema.json": 8494,
+    "typedef-add.schema.json": 8658,
     "typedef-read.schema.json": 1572,
     "where-used.schema.json": 1393,
     "workspace-graph.schema.json": 1115,
@@ -149,12 +149,12 @@
     "YearFromDate": 1130
   },
   "diagnostics": {
-    "RkCode": 32605,
+    "RkCode": 33036,
     "StructuralKernelFix": 24931
   },
   "surfaces": {
-    "manifest": 19549,
-    "manifest --full": 218047,
+    "manifest": 19695,
+    "manifest --full": 218193,
     "skill/SKILL.md": 27633
   }
 }

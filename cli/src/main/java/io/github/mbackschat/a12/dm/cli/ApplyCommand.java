@@ -396,6 +396,7 @@ final class ApplyCommand extends BaseCommand {
                     throw new IllegalArgumentException(FieldSpec.emptyModificationCorrective(op));
                 }
                 String path = parsed.group() + "/" + parsed.name();
+                Optional<TypeConfigSnapshot> before = mod.type().map(t -> stagedFieldConfig(session, path));
                 session.modifyField(path, mod);
                 changed.put("modified", path);
                 if (mod.type().isPresent()) {
@@ -406,7 +407,8 @@ final class ApplyCommand extends BaseCommand {
                 }
                 ArrayNode aspects = changed.putArray("aspects");
                 mod.changedAspects().forEach(aspects::add);
-                yield staged(which, changed, session);
+                yield staged(which, changed, before.map(b -> b.removedKeys(path, stagedFieldConfig(session, path), op))
+                        .orElse(List.of()), session);
             }
             case FIELD_REMOVE -> {
                 String path = req(op, "fieldPathInModel");
@@ -628,10 +630,11 @@ final class ApplyCommand extends BaseCommand {
                 // rewrite). Same rich spec as TYPEDEF_ADD via FieldSpec.parseType; the standalone `typedef
                 // modify` verb shares this path. A missing id throws → the op fails and the sequence rolls back.
                 String id = req(op, "id");
+                TypeConfigSnapshot before = stagedTypedefConfig(session, id);
                 session.setTypeDefinitionType(id, FieldSpec.parseType(op, id));
                 changed.put("modified", id);
                 changed.put("kind", stagedTypedefKind(session, id));
-                yield staged(which, changed, session);
+                yield staged(which, changed, before.removedKeys(id, stagedTypedefConfig(session, id), op), session);
             }
             case TYPEDEF_REMOVE -> {
                 String id = req(op, "typeDefId");
@@ -823,6 +826,16 @@ final class ApplyCommand extends BaseCommand {
      *  FIELD_READ op's read-back; the per-op serialize is the price of staged read-back, paid by reads too). */
     private static String stagedFieldKind(EditSession session, String path) {
         return ModelDocument.read(session.toJson()).fieldKind(path).orElseThrow();
+    }
+
+    /** A staged field's kind and per-kind config, read back from the session like {@link #stagedFieldKind}. */
+    private static TypeConfigSnapshot stagedFieldConfig(EditSession session, String path) {
+        return TypeConfigSnapshot.ofField(ModelDocument.read(session.toJson()), path);
+    }
+
+    /** A staged type definition's kind and per-kind config, read back from the session. */
+    private static TypeConfigSnapshot stagedTypedefConfig(EditSession session, String id) {
+        return TypeConfigSnapshot.ofTypedef(ModelDocument.read(session.toJson()), id);
     }
 
     /** The clean ValueKind name of a just-staged type definition, read back from the session. */

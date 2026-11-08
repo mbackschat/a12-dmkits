@@ -7,9 +7,11 @@ import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
+import io.github.mbackschat.a12.dm.cli.TypeConfigSnapshot;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -37,7 +39,9 @@ import picocli.CommandLine.Parameters;
  * back. The field is located by the spec's {@code group} + {@code name}; it is a <b>partial</b> edit — every
  * aspect the spec carries is applied, every absent one is left untouched: a {@code kind}/{@code typedef}
  * re-types it (add a STRING {@code pattern}, tighten a NUMBER's scale, …), and field-specific properties
- * change requiredness, helper text, required messages, or the global/transient flags. Common metadata uses
+ * change requiredness, helper text, required messages, or the global/transient flags. The type is one aspect,
+ * replaced whole like the add spec it reuses, so a config key the spec leaves out is lost; each such key is
+ * reported as {@code RK_MODIFY_REMOVES_CONFIG} rather than dropped silently. Common metadata uses
  * {@code meta <ref>} (G45). An aspect the spec carries is never silently dropped (a spec that would change
  * nothing is refused). Its directional contract is {@code schema field modify}; the result is re-bound
  * through the kernel, so a kernel-invalid change is a {@code rejected} envelope (nothing written). In place
@@ -47,7 +51,8 @@ import picocli.CommandLine.Parameters;
         description = "Change a field in place via a <spec.json> — re-type (kind + config) and/or edit field "
                 + "properties (required/helperText/requiredMessages/global/transient); use `meta <ref>` for "
                 + "common metadata. Partial, no delete-and-recreate; -o redirects, --dry-run previews. "
-                + "A KIND change warns which rules/computations read the field.")
+                + "kind + config replace the whole type, warning for each config key left out; "
+                + "a KIND change warns which rules/computations read the field.")
 final class FieldModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -111,11 +116,16 @@ final class FieldModifyCommand extends BaseCommand {
             // a KIND change (vs a within-kind config tweak or a field-property-only edit) can invalidate conditions
             // that read the field; surface the readers up front — only when re-typing. The kernel re-validate
             // stays the hard gate (§6).
-            advisories = mod.type().isPresent()
-                    ? reTypeAdvisories(modelJson, resolver, fieldPath,
-                            doc.fieldType(fieldPath).orElse(null), mod.type().get().jsonType())
-                    : List.of();
+            // a type replaces the whole per-kind config, so it also reports any config key it removed
+            advisories = new ArrayList<>();
+            Optional<TypeConfigSnapshot> before = mod.type().map(t -> TypeConfigSnapshot.ofField(doc, fieldPath));
+            if (mod.type().isPresent()) {
+                advisories.addAll(reTypeAdvisories(modelJson, resolver, fieldPath,
+                        doc.fieldType(fieldPath).orElse(null), mod.type().get().jsonType()));
+            }
             doc.applyModification(fieldPath, mod);
+            before.ifPresent(b -> advisories.addAll(
+                    b.removedKeys(fieldPath, TypeConfigSnapshot.ofField(doc, fieldPath), spec)));
             changed.put("modified", fieldPath);
             if (mod.type().isPresent()) {
                 if (spec.hasNonNull("typedef")) {
