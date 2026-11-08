@@ -77,8 +77,8 @@ jobs:
           tar -xzf locmetry-*-x86_64-unknown-linux-musl.tar.gz
           printf '%s\n' "$directory"/locmetry-*-x86_64-unknown-linux-musl >> "$GITHUB_PATH"
 
-      # NFR #1: interpreter production source may not outrun every recorded measurement. A handful of git calls,
-      # so it runs here, not inside `:adapter:test`, where it reported after 57 billable minutes (2026-11-08).
+      # NFR #1: interpreter production source may not outrun every recorded measurement. It needs only git and
+      # perf-results/, so it runs before the toolchain and build steps rather than inside a build lane.
       - name: Verify interpreter measurement currency
         working-directory: a12-dmkits
         run: ./scripts/run-typescript.sh "measurement currency" scripts/typescript/measurement-currency.ts

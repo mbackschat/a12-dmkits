@@ -51,8 +51,8 @@ export function getRelease(root: string, version: string): Release | undefined {
     return pages.flat().find(release => release.tag_name === `v${version}`);
 }
 /**
- * The release once the authenticated listing shows it as just written. That listing lags writes: on 2026-11-08
- * (checker 0.16.0) a draft created a moment earlier was absent from it and staging crashed on the missing release.
+ * The release once the authenticated listing shows it as just written. That listing lags writes, so a draft created
+ * or an asset uploaded a moment earlier can still be absent from it.
  */
 function awaitRelease(root: string, version: string, ready: (release: Release) => boolean = () => true): Release {
     const attempts = 10;

@@ -1,9 +1,8 @@
 // Whether interpreter production source has outrun every recorded performance measurement (NFR #1: missing
 // evidence fails rather than passes).
 //
-// This was a Kotlin test in `:adapter`, so it could only answer after the adapter test sources compiled and the
-// lane ran: on 2026-11-08 CI reported an unmeasured commit after 57 billable minutes, for a question that is a
-// handful of `git rev-list` calls. Here it runs from the pre-push hook and as an early CI step instead.
+// It needs only git and `perf-results/`, so it runs from the pre-push hook and as an early CI step rather than
+// inside a build lane, where the answer would wait for everything that lane compiles and runs first.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -29,9 +28,8 @@ export type Currency =
  * A commit is covered when SOME record sits at or after it — the minimum over every record, not the newest,
  * because a run may be taken on an older tree while a newer record exists from a side branch.
  *
- * `undecidable` is its own outcome because a shallow checkout is indistinguishable from an unmeasured one by
- * commit list alone: on 2026-09-21 a `--depth 1` CI clone resolved no record and the guard accused HEAD, a commit
- * that had touched only `settings.gradle` and a doc. Failing is still right there; naming a commit is not.
+ * `undecidable` is its own outcome because a shallow checkout resolves none of the recorded commits and so looks,
+ * by commit list alone, like an unmeasured one. Failing is still right there; naming a commit it never read is not.
  */
 export function currency(root: string): Currency {
     const recorded = recordedCommits(root);
