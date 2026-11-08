@@ -52,11 +52,10 @@ public final class KernelPatternPolicy {
      * The kernel's A12K-30 blacklist — one live statement, in {@code :predicates}, shared with the portable
      * checker.
      *
-     * <p>This method carried its own copy until 2026-09-13 and the copy was wrong in both directions: it
-     * consumed escapes while scanning, so it read the pattern instead of the source text and admitted
-     * {@code a\*+}, which the kernel refuses; and it rejected {@code \P{L}}, which the kernel admits, on a
-     * 2026-07-20 observation of {@code \P{L}+} whose mechanism was misread (the {@code }} before {@code +}
-     * is what the gate matches). The kernel grid that settles both is
+     * <p>This method must not keep its own copy, which can be wrong in both directions: a scan that consumes
+     * escapes while reading sees the pattern instead of the source text and admits {@code a\*+}, which the
+     * kernel refuses; and a gate that rejects {@code \P{L}} refuses what the kernel admits — the {@code }}
+     * before {@code +} in {@code \P{L}+} is what the gate matches. The kernel grid that settles both is
      * {@code rulekit.validate.laws.DeclaredPatternGateLawsTest}, which holds this policy to it row for row.
      */
     private static boolean rejectedByKernelAdmission(String regex) {

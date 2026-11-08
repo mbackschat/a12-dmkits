@@ -132,8 +132,8 @@ internal class TrackedFactBase private constructor(
      * charge the set shape, because narrowing them would answer a set question with one declaration.
      *
      * **And no gate makes that mechanical — a helper reads whichever it was written against, however many
-     * frames below the family's entry point it sits.** Corrected 2026-09-18, after a cold review measured
-     * four families answering differently under the scope: three invented a verdict and one dropped one, all
+     * frames below the family's entry point it sits.** Corrected 2026-09-18: four families answer
+     * differently under the scope (measured): three invent a verdict and one drops one, all
      * through set helpers in `Reference.kt` that read `declarations()` two or three frames down
      * (`ScopedWalkBranchDiscriminatorsTest`). This paragraph previously claimed the gate WAS mechanical,
      * naming `FamilyChargeProfileTest` as the enforcement locus and listing `declaredReferences` as
@@ -143,8 +143,8 @@ internal class TrackedFactBase private constructor(
      * will say so.
      *
      * It shares this base's model, transcript and derived [Views], so a scope allocates a view and no
-     * facts — which is a property of the code rather than of the prose, because those views were per
-     * INSTANCE until 2026-09-18 and this sentence was wrong about the third of the three.
+     * facts — which is a property of the code rather than of the prose: the derived views are shared by
+     * every scope, not built per instance (`ScopedFactBaseSharesItsViewsTest`).
      */
     fun scopedTo(at: DeclarationKey, cursor: TrackedDeclaration): TrackedFactBase =
         TrackedFactBase(model, transcript, views, Scope(at, cursor))

@@ -54,8 +54,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * fails to parse later still has its earlier reads judged. A
  * filtered base answers once its whole spec is read, so a defect inside the body comes first (both measured,
  * `rulekit.validate.laws.ConditionClassWithholdingLawsTest.aFilteredOperandsDefectsAnswerInTheOrderA12ReadsThem`).
- * Until 2026-09-15 the whole text was skipped, which threw the base away with the body and
- * left an unkeyed parallel level under a filtered operand unnamed (measured 2026-09-14,
+ * Skipping the whole text would throw the base away with the body and
+ * leave an unkeyed parallel level under a filtered operand unnamed (measured 2026-09-14,
  * `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`; the reach is
  * `rulekit.validate.laws.AggregateSlotLawsTest.whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier`).
  *

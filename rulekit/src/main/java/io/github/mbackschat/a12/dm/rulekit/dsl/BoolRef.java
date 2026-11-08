@@ -16,12 +16,12 @@ public record BoolRef(FieldRef field) {
      * AF181), and every comparison here is built from {@code field.value()}, which moves it onto the value's own
      * flag. This record mirrors it in no flag of its own, since nothing it builds bypasses its field.
      *
-     * <p><b>It was absent until 2026-09-05, and the absence was a defect rather than a decision.</b> The
+     * <p><b>The marker is carried here because its absence is a defect rather than a decision.</b> The
      * kernel admits a correlated boolean comparison in a filter — measured in
      * {@code validate.laws.CorrelatedBooleanComparisonLawsTest} against the catalog's own admitted carrier —
-     * so a legal model had no typed shape here, and the read path dropped the marker SILENTLY instead of
-     * refusing, which is the sharper half: an uncorrelated comparison reads a different row and renders
-     * identically.
+     * so without it a legal model has no typed shape here, and the read path would drop the marker SILENTLY
+     * instead of refusing, which is the sharper half: an uncorrelated comparison reads a different row and
+     * renders identically.
      */
     public BoolRef outer() {
         return new BoolRef(field.outer());

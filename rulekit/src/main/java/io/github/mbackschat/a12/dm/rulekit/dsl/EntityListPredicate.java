@@ -9,12 +9,12 @@ import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
  * {@code AtLeastOneFieldFilled(Group*)}, {@code FieldValuesNotUnique(a, Group)} — where each member is a
  * field, a flattened repetition list, or a group scope.
  *
- * <p><b>One record, because the kernel has one construct (DG36, 2026-08-15).</b> This replaced a pair —
- * {@code FieldListPredicate} over {@code List<FieldOperand>} and {@code GroupScopedFieldFill} over
- * {@code List<GroupListRef>} — which made a <em>mixed</em> list unrepresentable even though the kernel
- * accepts one in either operand order (KERNEL-FINDINGS {@code kf187}). The split had a cost beyond
- * ergonomics: the kernel→AST converter had to replay the kernel's group expansion into explicit field
- * operands for the mixed arm, and replaying it is what produced {@code kf188}'s read-back defect. Members are
+ * <p><b>One record, because the kernel has one construct (DG36).</b> A pair — {@code FieldListPredicate} over
+ * {@code List<FieldOperand>} and {@code GroupScopedFieldFill} over {@code List<GroupListRef>} — would make a
+ * <em>mixed</em> list unrepresentable even though the kernel accepts one in either operand order
+ * (KERNEL-FINDINGS {@code kf187}). The split costs more than ergonomics: the kernel→AST converter would have
+ * to replay the kernel's group expansion into explicit field operands for the mixed arm, and replaying it is
+ * what produced {@code kf188}'s read-back defect. Members are
  * {@link AggregateOperand}, the sealed {@code FieldOperand | GroupListRef} union the entity-list aggregates
  * already use for exactly this reason.
  *

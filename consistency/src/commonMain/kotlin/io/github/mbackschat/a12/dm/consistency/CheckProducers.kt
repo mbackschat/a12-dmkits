@@ -101,9 +101,8 @@ internal sealed interface CheckProducer {
      * The gate matters because the failure is SILENT otherwise. A family that uses the walk to look up
      * ANOTHER declaration — an operand's field, to learn its type — gets one declaration from a scoped base
      * and finds nothing, so it under-reports while charging no set shape at all: the charge-profile
-     * invariant cannot see it, and only that family's own tests would. Four families were flipped to this
-     * shape on 2026-09-18 and duly failed their own tests; the differential is what turns that luck into a
-     * denominator.
+     * invariant cannot see it, and only that family's own tests would, which is luck rather than a
+     * denominator; the differential is what supplies the denominator.
      */
     class PerDeclarationWalk(
         override val completes: Set<CheckFamily>,

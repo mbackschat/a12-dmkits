@@ -498,7 +498,7 @@ public final class KernelAdapter {
             return new ReadResult.Converted(converted, waived);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
-        // There is deliberately NO `catch (KernelCodeRefusal)` here, and it was tried (DG1001, 2026-09-20).
+        // There is deliberately NO `catch (KernelCodeRefusal)` here (DG1001, measured 2026-09-20).
         // A rulekit gate can only refuse what the converter has already begun rebuilding, and on this path
         // the kernel answers first for every law measured — a format-illegal extraction, a star on a
         // non-repeatable group, and duplicate operands all produced a null parse above, never a refusal. So
@@ -698,12 +698,11 @@ public final class KernelAdapter {
      * checkout: this facade method, and {@code ServiceFactory.getDynamicEnumerationService(…)}, which has no
      * in-kernel caller at all and exists to hand a per-rule {@code checkDynamicEnumerationRule} to external
      * consumers. Neither site sits on a {@code DocumentModelConsistencyRule}, so no consistency-gate route can
-     * report any of those twelve however the model is shaped. (Enumerated here, 2026-09-08, over the checkout's
-     * tracked sources with delombok trees excluded, after a12-kernel-lean reported it as one caller: their
-     * substantive point holds and the count does not.) The mandatory-information sibling reports
+     * report any of those twelve however the model is shaped. (Enumerated 2026-09-08 over the checkout's
+     * tracked sources with delombok trees excluded.) The mandatory-information sibling reports
      * PARSER problems through a different mechanism, and a rule may have a perfectly valid condition while
      * still not being a well-formed dynamic enumeration — so the two derivations' diagnostics are neither the
-     * same set nor obtainable from one call. Reported to us by a12-kernel-lean, 2026-09-07.
+     * same set nor obtainable from one call.
      *
      * <p>The rule collection is the kernel's own and unfiltered, for the same reason
      * {@link #mandatoryInformation()} gives: filtering would insert an editorial choice of ours into a kernel
@@ -762,8 +761,8 @@ public final class KernelAdapter {
      * collecting reporter on {@code getMandatoryInformationFromRules} returns nothing on any of THIRTEEN probed
      * consistency-clean models, each carrying one or two spliced rules, because a condition that parsed for the consistency gate parses here too —
      * so the original "problems already known impossible" comment is right about that method and says nothing
-     * about this one. Reported to us as one ~14-class gap by a12-kernel-lean, 2026-09-07; it is two gaps
-     * behind two different methods, twelve classes in {@link #dynamicEnumerations()} and these here.
+     * about this one. It is two gaps behind two different methods, twelve classes in
+     * {@link #dynamicEnumerations()} and these here.
      *
      * <p>The A12 arm ({@code CheckerFuerKontextEinschraenkung}) fires when a rule's condition is a BARE
      * comparison of {@code NumberOfFilledGroups} over a single starred group against a number constant and the

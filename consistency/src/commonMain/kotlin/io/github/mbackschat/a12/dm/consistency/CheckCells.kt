@@ -96,8 +96,7 @@ internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
      * today: `checkRun` is handed `CheckCells.NONE` when a snapshot is built, and the heterogeneous store a
      * draft produces is discarded rather than carried. So the stronger reading holds by that WIRING and not
      * by anything here — the distinction is locked in `CellValidationSweepTest`, and the slice that would
-     * break it is the one `ConsistencySnapshot.of` already names, reuse across an updated source set
-     * (found by review, 2026-09-18).
+     * break it is the one `ConsistencySnapshot.of` already names, reuse across an updated source set.
      */
     internal class Sweep(private val byKey: Map<CellKey, CheckCell>, private val model: PreparedModel) {
 

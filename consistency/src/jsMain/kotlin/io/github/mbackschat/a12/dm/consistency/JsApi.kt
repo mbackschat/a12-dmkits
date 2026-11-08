@@ -20,12 +20,11 @@ import kotlin.js.JsExport
  * parallel hierarchy of bridge classes. None of that is needed to export a HANDLE, which is why the stateful
  * surface costs almost nothing here.
  *
- * *This file carried exactly two functions until 2026-09-18, on the stated ground that a wider surface was
- * "real cost for an API nobody has consumed yet". That ground was measured false: the plan's own N acceptance
- * matrix requires every application feature G–J and L to be "exported through the documented typed package
- * surface and exercised from a separate packed-package Node project", and `checkDraft`, `impactOf` and
- * `snapshotOf` were reachable only from Kotlin — which that matrix names as a feature "represented only by
- * an internal-only API". The consumer that had not asked was this project.*
+ * *`checkDraft`, `impactOf` and `snapshotOf` are exported because the plan's own N acceptance matrix requires
+ * every application feature G–J and L to be "exported through the documented typed package surface and
+ * exercised from a separate packed-package Node project"; a feature reachable only from Kotlin is one that
+ * matrix names "represented only by an internal-only API". "Real cost for an API nobody has consumed yet" is
+ * no ground against that: the consumer that has not asked is this project.*
  *
  * A caller gets a report for every input, never a thrown exception: an unreadable source is reported at the
  * source level rather than raised, so a Node consumer needs no try/catch to get an answer.

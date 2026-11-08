@@ -172,10 +172,9 @@ private fun slotFinding(element: TrackedDeclaration, code: String, explain: Stri
 /**
  * The reserved-namespace law lives in the shared leaf, not here.
  *
- * `Rule.Builder` and `Computation.Builder` enforce the same law on the Java side, and before the leaf all
- * three stated it separately — which is how the computation copy came to be missing entirely until
- * 2026-09-12, the code reading as a rule's law. The finding's WORDING is this checker's own; the predicate
- * that decides it is not.
+ * `Rule.Builder` and `Computation.Builder` enforce the same law on the Java side. All three consume one shared
+ * predicate because a separately stated copy drifts: the code reads as a rule's law, so a computation copy is
+ * easily missed. The finding's WORDING is this checker's own; the predicate that decides it is not.
  */
 private fun reservedNameFinding(element: TrackedDeclaration): List<Finding> =
     if (!isReservedElementName(element.name)) {

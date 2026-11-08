@@ -333,9 +333,9 @@ public final class DocumentModelDraft {
      *
      * <p>A label here owes NO locale coverage: the kernel accepts a field or group label that answers only one
      * of two declared locales, and one written solely for an undeclared locale
-     * ({@code rulekit.validate.laws.ElementLabelLocaleLawsTest}). This writer refused both until 2026-09-14,
-     * by analogy with the enum-VALUE law — a real law about a different member — so the refusal made a model
-     * the kernel takes both unauthorable and, since the draft is also the read model, unreadable.
+     * ({@code rulekit.validate.laws.ElementLabelLocaleLawsTest}). Refusing either, by analogy with the
+     * enum-VALUE law — a real law about a different member — would make a model the kernel takes
+     * unauthorable and, since the draft is also the read model, unreadable.
      *
      * <p>Ordering declared locales first keeps a fully-answered element's bytes identical to what this writer
      * produced before it learned to carry the rest; the remainder follows in the order they were added.

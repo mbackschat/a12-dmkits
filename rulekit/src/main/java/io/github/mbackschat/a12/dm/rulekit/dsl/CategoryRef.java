@@ -64,7 +64,7 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
 
     /** The projection every role renders and references, key included. Package-visible so the
      *  {@code FieldValueAsNumber} source is rendered and referenced from it rather than rebuilt from its parts,
-     *  which once dropped the key (2026-10-25 cold review, R10). */
+     *  which drops the key (review finding R10). */
     EnumCategoryAccess access() {
         return new EnumCategoryAccess(field, name, correlated, key);
     }
@@ -73,9 +73,9 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
      * This category projection as a <b>value expression</b> — {@code [field -> name]} — the operand form a
      * computation assigns ({@code Selected = [Requested -> ServiceTier]}) and a comparison reads.
      *
-     * <p>The role peer of {@link #listOperand()} and {@link #firstFilledOperand()}. It was the one role a
-     * category could play that the handle did not hand out, so the adapter's computation read path had no
-     * typed way to rebuild the projection and erased it to the bare field (field report 2026-08-10).
+     * <p>The role peer of {@link #listOperand()} and {@link #firstFilledOperand()}. The handle must hand out
+     * every role a category can play: without this one the adapter's computation read path has no typed way to
+     * rebuild the projection and erases it to the bare field (field report 2026-08-10).
      */
     public Calculation value() {
         return access();

@@ -35,11 +35,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.rulesOwnReadsIn
  * **Silent on every level the scope chain refuses**, which is most of the grid: an unkeyed parallel level,
  * keys that differ in name or type, a level below a starred one, a level under the target's own group. A12
  * draws those DURING the parse, so naming this class HERE would be a post-parse verdict on a rule that never
- * finished parsing. They are [operandScopeContributions]' classes, and since 2026-09-15 that family
- * reads a filter-carrying text — with the filter BODY removed — so the levels the filtered OPERAND crosses
- * are answered in the report by the family that owns them rather than going unnamed. This family's silence
- * is a partition, not an under-report, for exactly those rows. *(Until then it was both: that family skipped
- * such a text wholesale, and the two silences together left the class unnamed on either side.)*
+ * finished parsing. They are [operandScopeContributions]' classes, and that family reads a filter-carrying
+ * text — with the filter BODY removed — so the levels the filtered OPERAND crosses are answered in the report
+ * by the family that owns them rather than going unnamed. This family's silence is a partition, not an
+ * under-report, for exactly those rows.
  *
  * **Still silent on a level only the filter BODY crosses**, which is the genuine remainder: those references
  * are judged against the filtered entity rather than the rule's target, so neither this family nor the scope

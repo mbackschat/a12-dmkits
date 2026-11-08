@@ -12,7 +12,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * quantifiers, aggregates, uniqueness, date-range overlap), where the kernel rejects them — so an
  * illegal {@code Sum([field -> Cat])} stays unrepresentable rather than relying on per-factory guards.
  *
- * <p><b>The {@link GroupListRef} arm, and why this interface carries no {@code kind()} (DG35, 2026-08-14).</b>
+ * <p><b>The {@link GroupListRef} arm, and why this interface carries no {@code kind()} (DG35).</b>
  * The kernel admits a group scope here — measured on both the literal value side and the entity value side, and
  * on <em>both</em> slots of the entity form ({@code rulekit.validate.laws.EntityListValueListGroupOperandLawsTest},
  * with the per-carrier table in KERNEL-FINDINGS {@code kf187}). A group has no kind of its own: the value-list

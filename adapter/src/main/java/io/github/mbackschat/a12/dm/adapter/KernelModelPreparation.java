@@ -108,10 +108,9 @@ final class KernelModelPreparation {
          *
          * <p><b>It folds a build failure exactly as {@code ModelLoader.loadAndCheck} does, and for the same
          * reason:</b> a whole model has nothing injected, so a backend that refuses to construct it is
-         * delivering its verdict on the caller's bytes. On 2026-09-07, an escaping build failure from
-         * {@code model read} reached the former reader helper's plain exit-2 sink, while {@code model check}
-         * already folded it into a kernel rejection. Both whole-model gates must consume the typed build
-         * failure; otherwise a kernel refusal reaches the current internal-error mapper (KF259).
+         * delivering its verdict on the caller's bytes. Both whole-model gates ({@code model read} and
+         * {@code model check}) must consume the typed build failure and fold it into a kernel rejection;
+         * otherwise a kernel refusal reaches the internal-error mapper (KF259).
          */
         IDocumentModel requireConsistent() {
             List<Notification> reported;

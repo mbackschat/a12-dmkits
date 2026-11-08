@@ -45,8 +45,8 @@ private fun ConsistencyReport.asJson(): JsonObject = buildJsonObject {
     // `complete` false means coverage ran out, and the field exists so the distinction stays available when
     // `complete` starts carrying information.
     put("complete", status.complete)
-    // The CHECKER's own classification, published 2026-09-18 so a non-JVM consumer can read the scoped pass
-    // instead of re-deriving it. It had to be re-derived before, and a JSON consumer cannot: deciding
+    // The CHECKER's own classification, published so a non-JVM consumer can read the scoped pass instead of
+    // re-deriving it, which a JSON consumer cannot do: deciding
     // ALL_CHECKS_PASSED needs the family DENOMINATOR, which no other member of this shape carries, so
     // `ci-gate.mjs` could only ever compute the three outcomes that do not need it. Publishing the answer
     // also retires a duplicated rule — that gate mirrored `outcome`'s logic in JavaScript with this

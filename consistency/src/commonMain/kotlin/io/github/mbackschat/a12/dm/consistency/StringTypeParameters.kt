@@ -15,8 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * **`-1` is A12's own "no bound", not a bound** (`IFieldType.UNDEFINED`), and it decides three of the rows
  * here: a sentinel minimum is not a declared minimum for the exclusion law, a sentinel maximum is not a
  * maximum of one, and a real minimum beside a sentinel maximum is a minimum with no maximum rather than an
- * inverted range. Reading it as a number is what made a legal stored model unreadable through this
- * repository's own Java kit until 2026-09-13.
+ * inverted range. Reading it as a number makes a legal stored model unreadable.
  *
  * **The laws are independent and this family reports them so**: a type with `noValueValidation`, no line
  * breaks and a pattern draws two codes from A12, not the first one it trips.

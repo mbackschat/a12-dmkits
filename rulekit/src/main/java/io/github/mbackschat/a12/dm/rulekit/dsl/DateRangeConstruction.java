@@ -85,10 +85,9 @@ public record DateRangeConstruction(Calculation start, Calculation end)
      * a {@link FieldRef} cannot see a declaration to do better.
      *
      * <p>Everything this predicate refuses is measured refused, one kind at a time, in that same laws file's
-     * operand table — {@code UNKNOWN} excepted, as the class javadoc says. The complement had been sampled at
-     * three kinds while the check covered eight (corrected 2026-09-07, cold review): a refusal wider than its
-     * rows is the defect this file's own history is about, so the rows now cover the predicate rather than an
-     * example of it.
+     * operand table — {@code UNKNOWN} excepted, as the class javadoc says. The rows cover the whole predicate
+     * rather than an example of it, because a refusal wider than its rows is the defect this file's own
+     * history is about.
      */
     private static boolean isDateBearingKind(ValueKind kind) {
         return kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT

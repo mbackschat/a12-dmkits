@@ -86,10 +86,10 @@ fun tokenize(text: String): List<Token> {
             }
 
             char == '"' -> {
-                // The scanner reports whether it found a closer. Re-deriving that from the last CHARACTER —
-                // which is what this did until 2026-09-12 — calls a literal complete whenever it happens to
-                // end on a quote, so `"A""` and `"""` both read as terminated when the doubling rule says
-                // neither is, and every consumer downstream is handed a literal that swallowed the rest.
+                // The scanner reports whether it found a closer. Re-deriving that from the last CHARACTER
+                // calls a literal complete whenever it happens to end on a quote, so `"A""` and `"""` both
+                // read as terminated when the doubling rule says neither is, and every consumer downstream
+                // is handed a literal that swallowed the rest.
                 val closed = endOfStringLiteral(text, index)
                 index = closed ?: text.length
                 tokens += Token(
@@ -103,8 +103,8 @@ fun tokenize(text: String): List<Token> {
             char == '\'' -> {
                 // The terminal is `'` STR (STR|DIGIT)* `'`, so the closer is the one that follows an
                 // unbroken run of name characters — NOT merely the next quote anywhere in the text. Taking
-                // the next quote is what this did until 2026-09-13, and on `'Tier) And 'x'` it produced the
-                // name `Tier) And `, which the reference extractor then reported as a field nobody wrote.
+                // the next quote would, on `'Tier) And 'x'`, produce the name `Tier) And `, which the reference
+                // extractor then reports as a field nobody wrote.
                 var scan = index + 1
                 while (scan < text.length && text[scan].isNamePart()) scan++
                 val closed = scan < text.length && text[scan] == '\''

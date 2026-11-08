@@ -31,7 +31,7 @@ import picocli.CommandLine.Parameters;
  * does this one rule touch?" without the operator glossary / structural tree / NL gloss. The rough inverse —
  * "what references this field?" — is {@code where-used}.
  *
- * <p><b>They are NOT backed by the same primitive, despite what this javadoc claimed until 2026-08-14.</b>
+ * <p><b>They are NOT backed by the same primitive.</b>
  * {@code where-used} reads the kernel's {@code getDirectlyReferencedEntities}; this verb projects
  * {@code ModelContext.explain(converted.condition())} — the <em>converted</em> rulekit AST (see the
  * {@code references} assignment below). Whether the two therefore produce different answers is <b>not

@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
  * rule is the [evaluated] gate. No repetition, so [star] is unused.
  *
  * **This is NOT a second production document model — it is a test seam, kept deliberately** (the alternative,
- * consolidating onto the general [Document], was considered and rejected 2026-06-24: it would only make the
+ * consolidating onto the general [Document], was rejected: it would only make the
  * isolated Interpreter unit tests heavier without removing real duplication). The general [Document] is the
  * production AND **performance** path — benchmark only that. This `Map`-backed double has O(1) lookups, so its
  * timings are a fiction; **never benchmark it** (INTERPRETER-PERFORMANCE.md).

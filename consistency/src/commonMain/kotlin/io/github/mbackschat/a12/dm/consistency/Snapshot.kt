@@ -8,8 +8,7 @@ package io.github.mbackschat.a12.dm.consistency
  * keep — and gives as its reason that "the cost is paid only by a caller that can receive the benefit". A
  * draft is a snapshot call whose caller receives nothing: [ConsistencySnapshot.draft] reads the run's report
  * and its reuse counts and never its store, because a draft answers a hypothetical and leaves the snapshot
- * it was asked of unchanged. So it followed the letter and recorded a transcript it dropped (found by
- * review, 2026-09-18).
+ * it was asked of unchanged. So following the letter would record a transcript that is then dropped.
  *
  * **No speedup is claimed for it, deliberately.** The ~180 ms of a 509 ms 200-program check that
  * `CellRetentionTest` cites is the cost of recording EVERY cell, and a draft records only the cells it

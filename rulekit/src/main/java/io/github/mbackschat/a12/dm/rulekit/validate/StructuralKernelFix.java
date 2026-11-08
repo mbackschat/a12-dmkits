@@ -37,7 +37,7 @@ import io.github.mbackschat.a12.dm.core.KernelCode;
  *       {@code ==}/{@code !=} operands, but a computed field whose scale differs from its expression raises
  *       it too — the
  *       "round one with RoundDown" comparison fix mis-stamps the computation case, where the fix is to
- *       match the computed field's scale; and since 2026-09-07 a third trigger, the POWER's derived scale,
+ *       match the computed field's scale; and a third trigger, the POWER's derived scale,
  *       which is unknown for every shape but a scale-0 base under a nonnegative literal exponent
  *       (KERNEL-FINDINGS KF269) — that context is what makes an author's own operands read as "?"). The
  *       catalog can only see operators, never these other triggers, so the corrective must be authored here

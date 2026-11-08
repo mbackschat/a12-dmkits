@@ -110,10 +110,10 @@ final class ApplyOpValidation {
     /**
      * The unknown-op summary, which must quote what the author WROTE.
      *
-     * <p>It used to concatenate {@code target + " " + op} unconditionally, so a record carrying only
-     * {@code {"op": "rule add"}} was reported as {@code op ' rule add'} — a value with a leading space that
-     * appears nowhere in the input. Measured 2026-09-04: reading that, one agent could not tell whether the
-     * space was its own typo, the tool's formatting, or a real parse of its file.
+     * <p>It must not concatenate {@code target + " " + op} unconditionally: a record carrying only
+     * {@code {"op": "rule add"}} would be reported as {@code op ' rule add'} — a value with a leading space that
+     * appears nowhere in the input, leaving the reader unable to tell whether the space is their own typo, the
+     * tool's formatting, or a real parse of their file.
      */
     private static String unknownOpSummary(JsonNode op) {
         String target = op.path("target").asText("");
@@ -146,9 +146,9 @@ final class ApplyOpValidation {
      *
      * <p>{@link #supportedOps} lists SPACE-JOINED labels ({@code rule add}), while an op-record spells the same
      * op as two keys ({@code {"target":"rule","op":"add"}}). Offering the label alone as the answer to a bad
-     * {@code op} value therefore CONFIRMS the mistake it is correcting — the exact loop that cost this session
-     * a run on 2026-09-04, where {@code {"op":"rule add"}} was refused and then told "supported ops: …, rule
-     * add, …". When the value the author put in {@code op} is itself a valid label, the corrective splits it
+     * {@code op} value therefore CONFIRMS the mistake it is correcting: {@code {"op":"rule add"}} would be
+     * refused and then told "supported ops: …, rule add, …". When the value the author put in {@code op} is
+     * itself a valid label, the corrective splits it
      * for them; otherwise it names the shape before listing the labels.
      */
     private static String unknownOpFix(JsonNode op) {

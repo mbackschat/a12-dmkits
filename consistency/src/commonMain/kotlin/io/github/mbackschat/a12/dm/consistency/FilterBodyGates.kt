@@ -81,8 +81,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * repetition the OPERAND crosses that neither its own star nor the DECLARATION'S ITERATION addresses draws
  * `MVK_NO_WILDCARD` from the reference reader before any filter question, and a star inside the BODY draws
  * `MVK_NO_WILDCARDS_ALLOWED` from [fieldValueReadOperandFindings]' position. The iteration is set by where the
- * error field sits rather than by where the rule is declared, which are the same thing on every carrier that
- * measured this until 2026-09-15 and are not the same question.
+ * error field sits rather than by where the rule is declared, which coincide on many carriers and are not the
+ * same question.
  *
  * **A `$`-marked reference is not walked.** `extractFilterIterationEntityRefs` skips it, and A12 checks it
  * against the rule's target instead, as the same read outside any filter is — [operandScopeContributions]'

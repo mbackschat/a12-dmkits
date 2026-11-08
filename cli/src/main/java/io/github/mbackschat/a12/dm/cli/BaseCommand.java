@@ -454,8 +454,7 @@ public abstract class BaseCommand implements Callable<Integer> {
      * already answers inside the envelope, so a spec carrying an unknown key got a coded, located, parseable
      * refusal while a spec carrying an out-of-domain value got prose on stderr and an empty stdout — one input,
      * two contracts, and the second one indistinguishable from a kernel verdict to a consumer that records the
-     * outcome without inspecting stdout. Reported by a12-kernel-lean (dmtool feedback, 2026-08-29), which came
-     * one step from filing a local gate as a kernel gate.
+     * outcome without inspecting stdout, and so liable to be filed as a kernel gate when it is a local one.
      *
      * <p>{@code RK_INVALID_VALUE} is deliberate rather than a new class: to a caller this is the same mistake
      * the schema gate reports under that code — a recognized key carrying a value outside its domain — and the
@@ -495,9 +494,9 @@ public abstract class BaseCommand implements Callable<Integer> {
      * A kits {@link PrecheckException} published as the {@code rejected} envelope it was BUILT to produce.
      *
      * <p>That type carries its own structured {@link Diagnostic} precisely so a caller can publish it "instead
-     * of scraping the message" — and until 2026-08-30 <b>no CLI site read it</b>, so every one surfaced as
-     * prose. On the scaffolding route that mattered most: {@code Computation.Builder}'s pre-checks raise an
-     * {@code MVK_*} code, so a bare stderr line was indistinguishable from a kernel verdict — the defect
+     * of scraping the message" — so a CLI site that catches it publishes that diagnostic rather than prose.
+     * On the scaffolding route that matters most: {@code Computation.Builder}'s pre-checks raise an
+     * {@code MVK_*} code, so a bare stderr line is indistinguishable from a kernel verdict — the defect
      * a12-kernel-lean reported on {@code field add}, one verb over.
      */
     protected int rejectPrecheck(ResultIdentity identity, PrecheckException refused) {

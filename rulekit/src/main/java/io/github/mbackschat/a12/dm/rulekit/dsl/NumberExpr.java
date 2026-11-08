@@ -237,7 +237,7 @@ public final class NumberExpr implements TemporalComponent {
     }
 
     // A kind-typed ref as the RIGHT operand, for the reason the comparison overloads above give: without these
-    // `ref.plus(expr)` compiled and `expr.plus(ref)` did not (found 2026-10-30 writing `Sum(…) + [field]`).
+    // `ref.plus(expr)` would compile and `expr.plus(ref)` would not (as in `Sum(…) + [field]`).
 
     public NumberExpr plus(NumberRef other) {
         return plus(other.asNumber());

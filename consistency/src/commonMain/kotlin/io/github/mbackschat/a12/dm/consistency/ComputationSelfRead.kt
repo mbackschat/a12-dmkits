@@ -201,9 +201,8 @@ private fun TrackedFactBase.projectedSelfReadIn(
  *
  * The kernel exempts its `AllGroupsFilled` only at arity ONE, and no arity branch is needed to honour that:
  * this catalog spells the single-entity form as its own operator, and a second operand draws
- * `MVK_PARAMSIZE_INVALID1` from a gate that answers ahead of the calculation walk — measured 2026-09-15 in
- * the laws twin, after a mutant dropping the branch survived and the row written to kill it showed the
- * branch could not be reached.
+ * `MVK_PARAMSIZE_INVALID1` from a gate that answers ahead of the calculation walk, so an arity branch is
+ * unreachable (measured 2026-09-15 in the laws twin, where a mutant dropping it survived).
  *
  * `AtLeastOneGroupFilled` over a sole unstarred ROOT group is the list family's one exemption, whatever lies
  * below the root; over a sole non-root group, beside a second group or starred, it reads the field like any

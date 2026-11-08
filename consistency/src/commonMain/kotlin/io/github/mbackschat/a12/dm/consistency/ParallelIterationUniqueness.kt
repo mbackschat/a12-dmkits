@@ -24,8 +24,8 @@ import kotlinx.serialization.json.contentOrNull
  * **The star has to be tested at the JOINT level, not anywhere in the reference.** A star marks the level it
  * sits on and nothing above it, so an aggregate over `Picks` then a starred `Checks` beneath it still
  * iterates `Picks` jointly and A12 refuses the rule — measured 2026-09-14
- * (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`),
- * after this family had read "carries a star" as "does not iterate" and stayed silent on it.
+ * (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`); reading "carries a star" as "does not
+ * iterate" would stay silent on it.
  *
  * **It asks for the same NAME and the same declared TYPE, which is the intersection rather than the law.**
  * A12's own test is `matchBaseType` over the two index fields; whether a differing NAME alone stops the

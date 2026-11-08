@@ -314,10 +314,10 @@ final class ConditionConverter {
      * is a DIFFERENT operation from the bare field — it reads the field's value in the category's domain — so a
      * conversion that erases it produces a wrong read that still reports itself converted.
      *
-     * <p>This exists because that erasure has now shipped twice from different sites: SPEC-2026-07-22-05 fixed
-     * the value-list quantifiers, and the 2026-08-10 field report found the value-expression sites still doing
-     * it. A per-site fix leaves the next unthreaded site silent, which is what a backstop is for: a dropped
-     * projection degrades the subject to a verbatim {@code Opaque} instead of corrupting it.
+     * <p>This exists because that erasure is reachable from several independent sites — the value-list
+     * quantifiers (SPEC-2026-07-22-05) and the value-expression sites (field report 2026-08-10) — and a per-site
+     * fix leaves the next unthreaded site silent, which is what a backstop is for: a dropped projection degrades
+     * the subject to a verbatim {@code Opaque} instead of corrupting it.
      *
      * <p>{@code ->} is the {@code EnumCategory} operator's rendering in <b>every</b> language (its catalog
      * keywords are {@code ->} for both {@code en} and {@code de}) and the DSL gives that token no other job, so
@@ -518,10 +518,10 @@ final class ConditionConverter {
                 && entities.stream().anyMatch(IEntityId::isField)) {
             // A MIXED entity list keeps each member as the author wrote it — the kernel's own shape, one
             // list whose members may be fields or groups (KERNEL-FINDINGS kf187: accepted in both operand
-            // orders). This arm used to REBUILD each group into its descendant fields, and the rebuild was
-            // wrong twice over: it dropped the operand's star until 2026-08-14, and it then dropped a NESTED
-            // repeatable's star, which the kernel refuses outright (kf188) — a read that turned a legal model
-            // into an unauthorable condition. Representing the list faithfully removes the whole class.
+            // orders). Rebuilding each group into its descendant fields is wrong twice over: it drops the
+            // operand's star, and it drops a NESTED repeatable's star, which the kernel refuses outright (kf188)
+            // — a read that turns a legal model into an unauthorable condition. Representing the list
+            // faithfully removes the whole class.
             List<AggregateOperand> operands = entities.stream()
                     .map(e -> e.isField()
                             ? (AggregateOperand) toFieldOperand(e)
@@ -1007,9 +1007,9 @@ final class ConditionConverter {
      * {@link #toValueListOperand}: an enum category projection ({@code [field -> Cat]}) stays an
      * {@link EnumCategoryAccess}, everything else is the plain field value.
      *
-     * <p>Its absence is what let {@code getCategoryName()} be dropped on every value-expression site while the
-     * quantifier sites preserved it (SPEC-2026-07-22-05 fixed only the latter) — a computation
-     * {@code Selected = [Requested -> ServiceTier]} read back as {@code [Requested]} and still claimed to be
+     * <p>Without it, {@code getCategoryName()} is dropped on every value-expression site even where the
+     * quantifier sites preserve it (SPEC-2026-07-22-05 covers only the latter) — a computation
+     * {@code Selected = [Requested -> ServiceTier]} reads back as {@code [Requested]} and still claims to be
      * converted (field report 2026-08-10). {@link #verifyCategoryPreserved} is the backstop for any site this
      * helper does not reach.
      *
@@ -1408,8 +1408,8 @@ final class ConditionConverter {
                 && model.fieldAt(field.getField().getFullName())
                         .map(info -> info.kind() == ValueKind.DATE_RANGE).orElse(false)) {
             // A keyed cell is a DIFFERENT read from the bare field, so it gets its own arm; without one the
-            // `For` key was silently dropped here and the rule round-tripped to another, still-legal condition
-            // (the wrong-value half of the read gap, cold review 2026-08-24).
+            // `For` key is silently dropped here and the rule round-trips to another, still-legal condition
+            // (the wrong-value half of the read gap).
             if (hasSemanticIndex(field.getField())) {
                 return new DateRangeIndexedValue(semanticIndex(field.getField(), origin).index());
             }
@@ -1466,7 +1466,7 @@ final class ConditionConverter {
      * A field for a diagnostic, naming the property the decision was actually made on. A refusal here is
      * decided by the DECLARED FORMAT, so printing the kind alone tells the reader to go and check the wrong
      * thing — and on a cross-declared field it prints a kind that is admitted at this gate under a different
-     * declaration, which reads as a contradiction (cold review 2026-09-07).
+     * declaration, which reads as a contradiction.
      */
     private static String describe(FieldInfo info) {
         return info.format().filter(format -> info.temporalClass() != info.kind())
@@ -3084,12 +3084,12 @@ final class ConditionConverter {
             }
             for (FieldInfo field : fields) {
                 // The COMPARABILITY CLASS, not the kind — and the class each operand's DECLARATION selects,
-                // which is what the kernel's own gate reads ([KF271]). Two corrections landed here, both from
-                // the same root: keying on kind EQUALITY made a kernel-admitted
-                // `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)` unreadable (cold review 2026-08-24), and keying
-                // the class on the KIND left the same defect for a TIME field declared `yyyy-MM-dd`, whose list
-                // the kernel admits (cold review 2026-09-07 — `CrossKindTemporalOperandReadTest`). Either way
-                // the rule fell to the NUMERIC arm and came back Opaque. `temporalClass()` resolves the
+                // which is what the kernel's own gate reads ([KF271]). Two keyings fail from the same root:
+                // keying on kind EQUALITY makes a kernel-admitted
+                // `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)` unreadable, and keying
+                // the class on the KIND leaves the same defect for a TIME field declared `yyyy-MM-dd`, whose list
+                // the kernel admits (`CrossKindTemporalOperandReadTest`). Either way
+                // the rule falls to the NUMERIC arm and comes back Opaque. `temporalClass()` resolves the
                 // declaration; `temporalClassOf` collapses DATE_FRAGMENT.
                 ValueKind declared = field.temporalClass();
                 ValueKind temporalClass = declared == null ? null : DateListAggregate.temporalClassOf(declared);

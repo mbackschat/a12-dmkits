@@ -35,8 +35,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * <h2>Why this is a closed class with factory-only construction</h2>
  *
  * <p>The predecessor was a {@code record} with a public canonical constructor and a
- * {@code read(target, op, summary, boolean valid, diagnostics, data)} factory. Both were defect generators, and the
- * 2026-07-31 field feedback is what they generated:
+ * {@code read(target, op, summary, boolean valid, diagnostics, data)} factory. Both were defect generators
+ * (field feedback 2026-07-31):
  *
  * <ul>
  *   <li>the {@code boolean valid} sat in a long, largely same-typed parameter list, and <b>35 call sites passed a
@@ -477,9 +477,9 @@ public final class ResultEnvelope {
      *   <li><b>{@code valid:false}</b> — the subject verdict itself, wherever it appears. A kernel
      *       {@link Family#REJECTION} publishes it ({@link RejectionBasis.KernelRejection}: the gate RAN and
      *       arbitrated, so {@code valid} and {@code verification} both ride the envelope) while reporting
-     *       {@code ok:false}, because the <em>operation</em> did not succeed. Reading {@code ok} alone called
-     *       that an executed rejection a failure — the 2026-08-10 field report, and exactly the shape a
-     *       deliberate negative control takes when it is a {@code computation add --dry-run} rather than a
+     *       {@code ok:false}, because the <em>operation</em> did not succeed. Reading {@code ok} alone calls
+     *       an executed rejection a failure (field report 2026-08-10) — exactly the shape a deliberate
+     *       negative control takes when it is a {@code computation add --dry-run} rather than a
      *       {@code rule check}.</li>
      * </ul>
      *

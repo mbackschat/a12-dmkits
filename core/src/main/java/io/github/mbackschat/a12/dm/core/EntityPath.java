@@ -172,13 +172,11 @@ public record EntityPath(List<String> segments) {
      * under the index. Filing an operation by its first consumer rather than by its type is why callers looking
      * for it on the path type did not find it and wrote their own: the interpreter carries two of its own
      * ({@code Paths.resolveErrorPath} clamps like this one, {@code load.ModelLoader.resolveRel} throws on an
-     * over-climb instead), and on 2026-09-04 a draft of the CLI's {@code --field} corrective got the convention
-     * BACKWARDS in the working tree — it read the first {@code ..} as climbing ABOVE the group, so
-     * {@code ../CustomerName} under {@code /Order} named a sibling of {@code /Order}. It was caught by its own
-     * new test before it was committed, so the repository's history does not contain it; what the history does
-     * show is that nothing existing would have caught it, because no test related the two directions. That is
+     * over-climb instead). A hand-written copy can get the convention BACKWARDS — reading the first {@code ..}
+     * as climbing ABOVE the group makes {@code ../CustomerName} under {@code /Order} name a sibling of
+     * {@code /Order} — and nothing but a test relating the two directions catches it. That is
      * the defect class this record exists for (see the class doc): a path relation spelled out at a call site
-     * instead of named on the value. {@code ModelReader.resolveRelPath} now delegates here, so there is one
+     * instead of named on the value. {@code ModelReader.resolveRelPath} delegates here, so there is one
      * implementation rather than an agreement to maintain.
      *
      * <p><b>What the round trip does and does not buy.</b> {@code EntityPathTest} pins

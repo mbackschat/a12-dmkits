@@ -180,7 +180,7 @@ final class FieldAddCommand extends BaseCommand {
      * refused here — but this verb's own {@code --parent} help calls itself "the alias matching every sibling
      * add-verb", and those verbs now accept `/`, so an author who learns the spelling there and tries it here
      * would otherwise get the generic "no group at '/'" and read it as the tool being inconsistent rather than
-     * as the model having no fields at the root (a cold review, 2026-09-04).
+     * as the model having no fields at the root.
      */
     private boolean refused(ModelDocument doc, String groupPath) {
         Optional<Refusal> refusal = new SafetyGate()

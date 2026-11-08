@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
  * starred aggregate stays OMISSION-typed until every declared row is instantiated and filled.
  *
  * **Like [SingleRowDoc], this is a test seam, NOT a second production document model** (consolidating onto the
- * general [Document] was considered and rejected 2026-06-24 — it only burdens the isolated unit tests). The
+ * general [Document] would only burden the isolated unit tests). The
  * general [Document] is the production AND performance path; this `Map`-backed double's timings are a fiction —
  * **never benchmark it** (INTERPRETER-PERFORMANCE.md).
  */

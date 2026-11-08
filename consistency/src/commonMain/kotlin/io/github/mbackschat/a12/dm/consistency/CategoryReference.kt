@@ -67,9 +67,9 @@ private fun TrackedFactBase.categoryFinding(
     }
     val target = named.takeIf { it.declaredKind == DeclaredKind.FIELD } ?: return null
     // A field typed through a type definition is the type the definition declares ([KERNEL-FINDINGS KF602]), and an
-    // unresolvable one stays unjudged: judging it from the reference once refused what A12 admits, a date `format`
+    // unresolvable one stays unjudged: judging it from the reference refuses what A12 admits, a date `format`
     // field typed through an Enumeration definition reading `[format->containsYear]`
-    // (`adapter.laws.CheckerSilenceOnCleanModelsTest`, 2026-09-14).
+    // (`adapter.laws.CheckerSilenceOnCleanModelsTest`, measured 2026-09-14).
     val declaredType = effectiveFieldType(target) ?: return null
     val enumeration = enumerationBodyOf(target)
         ?: return if (declaredType == FieldType.ENUMERATION) {

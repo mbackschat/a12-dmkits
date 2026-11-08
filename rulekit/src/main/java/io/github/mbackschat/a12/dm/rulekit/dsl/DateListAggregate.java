@@ -17,12 +17,12 @@ import io.github.mbackschat.a12.dm.core.Refusals;
  * {@link Dsl#latestOf}/{@link Dsl#earliestOf} (DATE), {@link Dsl#latestTimeOf}/{@link Dsl#earliestTimeOf}
  * (TIME), or {@link Dsl#latestDateTimeOf}/{@link Dsl#earliestDateTimeOf} (DATETIME).
  *
- * <p><b>The operand list is a list, exactly as {@link ListAggregate}'s is</b> (widened 2026-08-24 — DG38).
- * It used to hold a single scope, which made {@code MaxValue(FiledOn, ClosedOn)} over two direct DATE fields
- * unauthorable <em>and</em>, the sharper half, unreadable: the adapter's read path fell through to the numeric
- * arm and {@code rule read} returned the rule Opaque with {@code MaxValue takes number fields}. The kernel
- * admits the shape — {@code CheckFeldListenOpImpl} routes a DATETIME-based first operand to
- * {@code checkAllFieldsAreComparableDatetimeType} over the whole list — so the single-operand erasure was a
+ * <p><b>The operand list is a list, exactly as {@link ListAggregate}'s is</b> (DG38). A single scope would
+ * make {@code MaxValue(FiledOn, ClosedOn)} over two direct DATE fields unauthorable <em>and</em>, the sharper
+ * half, unreadable: the adapter's read path would fall through to the numeric arm and {@code rule read} would
+ * return the rule Opaque with {@code MaxValue takes number fields}. The kernel admits the shape —
+ * {@code CheckFeldListenOpImpl} routes a DATETIME-based first operand to
+ * {@code checkAllFieldsAreComparableDatetimeType} over the whole list — so a single-operand erasure would be a
  * client-side refusal with no measured basis.
  *
  * <p>The gates pre-checked here are the ones {@link ListAggregate} already pre-checks and this family shares
@@ -131,8 +131,8 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
      * kernel's gate reads is selected by the DECLARED FORMAT ([KF271]) — a TIME field declared
      * {@code yyyy-MM-dd} sits in the DATE class — which no function of a kind can see. The READ path composes
      * this with {@link FieldInfo#temporalClass()}, which resolves the declaration first; this class's own
-     * authoring gate asks only {@link EntityListRoute#isDateLike}. Public for that composition (2026-08-24), narrowed to it
-     * after a class comparison keyed on kind alone was measured refusing kernel-admitted lists (2026-09-07).
+     * authoring gate asks only {@link EntityListRoute#isDateLike}. Public for that composition and kept to it,
+     * because a class comparison keyed on kind alone was measured refusing kernel-admitted lists (2026-09-07).
      */
     public static ValueKind temporalClassOf(ValueKind kind) {
         return kind == ValueKind.DATE_FRAGMENT ? ValueKind.DATE : kind;

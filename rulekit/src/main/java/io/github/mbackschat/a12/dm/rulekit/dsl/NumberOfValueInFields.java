@@ -19,8 +19,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * kernel routes this operator's entities through the same {@code getRefList} as the entity-list aggregates — so
  * a {@link GroupListRef} is admitted here for the same reason it is under {@code Sum}, and the kernel expands it
  * to its contained fields before counting ({@code KF187}; {@code validate.laws.ValueInFieldsGroupOperandLawsTest}
- * locks the admission, {@code adapter.laws.GroupStarValueInFieldsDiffTest} the runtime). It was a
- * {@code FieldOperand} list until 2026-08-14, which made the admitted group shape <em>unrepresentable</em>
+ * locks the admission, {@code adapter.laws.GroupStarValueInFieldsDiffTest} the runtime). A
+ * {@code FieldOperand} list would make the admitted group shape <em>unrepresentable</em>
  * rather than refused — {@code DG34}, a type-level erasure with no measured basis.
  */
 public record NumberOfValueInFields(Calculation value, List<AggregateOperand> fields) implements Calculation {

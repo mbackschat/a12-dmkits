@@ -11,7 +11,7 @@ package io.github.mbackschat.a12.dm.consistency
  * fixture's triggering declaration and evidence row, the corrective projection, that corrective's
  * reachability row, the builder-divergence disposition, and a new laws class's two registrations. Every one
  * is a guard that fires only AFTER the family is green, so reading the list first turns four failing lanes
- * into one pass; it has cost that four twice (2026-09-14, 2026-09-15).
+ * into one pass.
  */
 enum class CheckFamily {
     /** A rule's error target and a computation's computed field resolve to a declared element. */
@@ -1088,7 +1088,7 @@ internal fun checkRun(
             // listed: a family wired into the report while this set stayed silent about it was a live
             // possibility, and the wiring guard could only catch the opposite direction.
             //
-            // From `scheduled` rather than from [CHECK_PRODUCERS], corrected 2026-09-18: a per-declaration
+            // From `scheduled` rather than from [CHECK_PRODUCERS]: a per-declaration
             // producer is asked once per DECLARATION, so on a source that declares no elements it runs zero
             // times while the registry still lists it. The report already discloses that state as a gap, so
             // the over-claim was reachable, and `checksCompleted` is evidence — it may not offer a family

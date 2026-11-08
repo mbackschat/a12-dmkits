@@ -25,12 +25,10 @@ import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumen
  * kernel-stated limitation the caller must honor: it does <b>not</b> move the element itself (the caller
  * renames/moves the declaration afterward).
  *
- * <p><b>The {@code *}-reference caveat this javadoc used to carry was MEASURED FALSE (2026-08-14).</b> It said
- * starred repetition-list references are left untouched, "so a rename/move a {@code *}-reference would dangle
- * must be refused" — an advertised refusal that never existed. Renaming a repeatable group under a rule reading
- * {@code Items*}{@code /Qty} in fact carries the starred reference across (`Lines*`{@code /Qty} present, no
- * stale one left), so there is nothing to refuse. Deleted rather than implemented, which is the right
- * resolution of an "advertise nothing you cannot point at" violation when the advertisement is the wrong half.
+ * <p><b>A {@code *}-reference needs no refusal: starred repetition-list references are carried across
+ * (measured 2026-08-14).</b> Renaming a repeatable group under a rule reading {@code Items*}{@code /Qty}
+ * carries the starred reference across (`Lines*`{@code /Qty} present, no stale one left), so a rename/move
+ * that would leave a {@code *}-reference dangling does not arise and there is nothing to refuse.
  * ({@code cli.StarReferenceRenameGateTest}; {@code CG18}.)
  */
 public final class ReferenceRewriter {

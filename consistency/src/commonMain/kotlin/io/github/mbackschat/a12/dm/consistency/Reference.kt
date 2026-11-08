@@ -513,9 +513,9 @@ internal fun TrackedDeclaration.declaredFieldType(): FieldType? =
  * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`, and the custom one on all five carriers that ask
  * the question separately in `rulekit.validate.laws.CustomFieldTypeOperandLawsTest`.
  *
- * The custom member is spelled `CustomFieldType` because that is the discriminator A12 STORES; it read
- * `CustomType` until 2026-09-14, a token no model carries, so every carrier here was silently blind to a
- * custom declaration (`CheckerFieldTypeTokenGuardTest` now derives the legal spellings).
+ * The custom member is spelled `CustomFieldType` because that is the discriminator A12 STORES; `CustomType` is
+ * a token no model carries and would leave every carrier here silently blind to a custom declaration
+ * (`CheckerFieldTypeTokenGuardTest` derives the legal spellings).
  */
 internal val PLAINLY_NON_NUMBER_TYPES = setOf(
     FieldType.STRING,

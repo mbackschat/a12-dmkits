@@ -19,8 +19,8 @@ private const val RESERVED_NAME_PREFIX = "vk_vk"
  * **The code names rules and the law is not a rule's alone.** A12 rejects a COMPUTATION called `vk_vk…` with
  * exactly the same code (measured 2026-09-12 on both carriers, `validate.laws.RuleSlotLawsTest` and
  * `ComputationSlotLawsTest`), so a caller that applied this to rules only would leave computations silently
- * unchecked — which is what `Computation.Builder` did until 2026-09-12, because the code reads as a rule's
- * law. That miss is the argument for this function existing rather than for a fourth copy of the comparison.
+ * unchecked — an easy miss, because the code reads as a rule's law. That miss is the argument for this
+ * function existing rather than for a fourth copy of the comparison.
  */
 fun isReservedElementName(name: String): Boolean =
     name.length in RESERVED_NAME_PREFIX.length..100 &&

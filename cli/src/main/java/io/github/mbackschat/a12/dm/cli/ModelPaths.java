@@ -76,9 +76,8 @@ public final class ModelPaths {
      * of every rejected value and therefore tells an author nothing about this one. The value that lands here
      * is often a RELATIVE path, because the typed Java rule API spells the same slot relatively
      * ({@code DraftRule.errorEntityRelPath} takes {@code ../Field}) while every CLI path option is absolute —
-     * two live conventions for one concept. Measured 2026-09-04: one session hit this four times in a row
-     * without the summary ever registering, because its probe filter had discarded the summary and kept only
-     * the code.
+     * two live conventions for one concept. A consumer whose probe filter discards the summary and keeps only
+     * the code never sees the restated rule, so the answer has to ride the corrective itself.
      *
      * <p><b>It proposes a path for exactly ONE value shape, and that restraint is the correction of a defect
      * this method shipped with.</b> Only a {@code ../}-prefixed value says unambiguously what it meant: that is
@@ -139,10 +138,10 @@ public final class ModelPaths {
      *
      * <p><b>Why a synonym rather than a new path form.</b> Every add-verb that can create something at the top
      * of a model — {@code group add}, {@code include add}, {@code group multiselect}, {@code group attachment} —
-     * expresses "no parent" as the EMPTY string, which is what {@code ModelDocument} itself keys on. That was
-     * the only route and it was undocumented, so the spelling an author reaches for first ({@code /}) failed with
-     * {@code no group at '/'} — a message that reads as "your model has no root" and led a12-kernel-lean's agent
-     * to conclude multi-root models are unauthorable through the CLI (their instrument note, 2026-09-04). This is
+     * expresses "no parent" as the EMPTY string, which is what {@code ModelDocument} itself keys on. Without the
+     * synonym, the spelling an author reaches for first ({@code /}) fails with {@code no group at '/'} — a
+     * message that reads as "your model has no root" and suggests multi-root models are unauthorable through
+     * the CLI. This is
      * an affordance at the flag, NOT an invented pointer syntax: {@code /} is not a legal A12 absolute path at all
      * ({@link #isAbsoluteEntityPath} refuses it, on {@code ElementPathUtils.splitAbsPath}'s own contract), so no
      * A12 shape is being redefined and nothing downstream ever sees the synonym.

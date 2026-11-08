@@ -731,7 +731,7 @@ private fun EvalContext.holdsTemporal(path: String): Boolean =
  * non-date string) is unchanged — so it only ever rewrites a literal that genuinely parses as one. A date has
  * two literal shapes: the full `dd.MM.yyyy`, and the **omitted-year** `dd.MM.`, which needs a year from somewhere.
  *
- * There are two sources, and the second was missing until 2026-09-03. The first is the model's `baseYear`, which
+ * There are two sources. The first is the model's `baseYear`, which
  * the kernel injects, so `"13.07."` means `13.07.<baseYear>` (IF52). The second is that the year is simply not
  * needed: when the literal is being ASSIGNED to a DATE target whose own declared format names no year, the store
  * renders only the components that format carries, so no reference year reaches the document. The kernel admits
@@ -739,10 +739,10 @@ private fun EvalContext.holdsTemporal(path: String): Boolean =
  * alone.
  *
  * **[YEARLESS_ANCHOR_YEAR] is reached only when NO base year is declared, and on one carrier it IS observable.**
- * The first half of the qualification stands: the kernel's year-agreement gate returns true unconditionally once
- * a Base Year is declared, so "a year-rendering target disagrees with a yearless literal" is the rule for a
- * base-year-FREE model only, and in a base-year model the `baseYear ?:` above takes the declared year. The
- * second half was wrong until 2026-09-03, and it was wrong because reachability was reasoned rather than run.
+ * The kernel's year-agreement gate returns true unconditionally once a Base Year is declared, so "a
+ * year-rendering target disagrees with a yearless literal" is the rule for a base-year-FREE model only, and in a
+ * base-year model the `baseYear ?:` above takes the declared year. Whether the anchor is observable is measured
+ * per carrier, never reasoned from reachability.
  * On the ASSIGNMENT and COMPARISON carriers the anchor is indeed unobservable — the shapes that would expose it
  * are refused at admission under `MVK_INVALID_COMPARE_TO_DATE` (KF239, measured): the year disagreement, and a
  * day that needs a real year to exist (`29.02.`; `31.04.` is refused on the same ground and `30.04.` admitted,
@@ -751,9 +751,8 @@ private fun EvalContext.holdsTemporal(path: String): Boolean =
  * leap-ness. **Measured on one model varying only its Base Year: 2024 answers 2, 2023 answers 1, an unconfigured
  * model answers 2.** So the anchor is the declared Base Year — which the `baseYear ?:` below already prefers —
  * and [YEARLESS_ANCHOR_YEAR] constrains the UNCONFIGURED fallback only
- * (`adapter.laws.YearlessConstantOperationDiffTest`). A first version of this comment said "the anchor must be a
- * leap year" without that qualifier; every row behind it declared no Base Year, so it could not tell the two
- * accounts apart (a12-kernel-lean `SPEC-2026-09-04-01` supplied the axis).
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). The Base Year is the axis that separates "the anchor is a
+ * leap year" from "the anchor is the declared year" (a12-kernel-lean `SPEC-2026-09-04-01`).
  *
  * **[declaredFormat] is deliberately NOT defaulted.** Its absence means "nothing in scope declares a year", which
  * is a reason to anchor rather than a reason to abstain — the opposite of what a defaulted `null` produced. Two

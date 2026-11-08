@@ -1599,13 +1599,11 @@ public final class Dsl {
     // --- group-scope forms: NumberOfValueInFields(value In Group*) --------------------------------
     // The kernel routes this operator's entities through the same getRefList as the entity-list aggregates, so
     // a starred group is admitted here exactly as it is under Sum, and the kernel EXPANDS it to its contained
-    // fields before counting (KF187; validate.laws.ValueInFieldsGroupOperandLawsTest). Until 2026-08-14 the
-    // operand list was typed FieldOperand, which made the admitted shape unrepresentable rather than refused —
+    // fields before counting (KF187; validate.laws.ValueInFieldsGroupOperandLawsTest). The operand list is not
+    // typed FieldOperand, which would make the admitted shape unrepresentable rather than refused —
     // DG34, a type-level erasure with no measured basis. The factories take any GroupListRef, so BOTH repetition
-    // shapes are authorable; the note that used to sit here scoped the offer to the starred form because the
-    // unstarred one had no measurement on this carrier. It has one now — ACCEPT, on the same fixture and in the
-    // same sweep as the rest of the table (validate.laws.GroupOperandCarrierAdmissionLawsTest) — so the scope
-    // limit is discharged rather than carried forward as a standing caveat.
+    // shapes are authorable; the unstarred one is measured ACCEPT on the same fixture and in the
+    // same sweep as the rest of the table (validate.laws.GroupOperandCarrierAdmissionLawsTest).
 
     /** {@code NumberOfValueInFields(True In Group*)} — count over a starred group's expansion equal to a
      *  boolean constant. catalog:NumberOfValueInFields */
@@ -2185,11 +2183,10 @@ public final class Dsl {
      * list would be. That second gate stays kernel-arbitrated (F4) rather than pre-checked here, for the same
      * reason {@link AggregateOperand} delegates it: owning it would mean owning the expansion's extent.
      *
-     * <p>Added 2026-08-12 (DG33). It had been unauthorable, and the omission was a <b>type-level erasure with no
-     * measured basis</b> — the kernel admitted the shape all along. Widening it also required fixing a real
-     * evaluator divergence first: both kernel strategies fire on a duplicate among the expanded cells and the
-     * interpreter did not, so authoring this would otherwise have admitted a form that was silently answered
-     * wrong ({@code adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest}).
+     * <p>The group form is not omitted: leaving it out would be a <b>type-level erasure with no measured
+     * basis</b> (DG33) — the kernel admits the shape. Authoring it requires the evaluator to agree: both kernel
+     * strategies fire on a duplicate among the expanded cells, so the interpreter must too, or this would admit
+     * a form that is silently answered wrong ({@code adapter.laws.FieldValuesNotUniqueGroupOperandDiffTest}).
      */
     public static Condition fieldValuesNotUnique(GroupScope first, GroupScope... rest) {
         return groupScopedFieldFill(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);

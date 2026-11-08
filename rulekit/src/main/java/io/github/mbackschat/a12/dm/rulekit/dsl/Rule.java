@@ -316,8 +316,8 @@ public record Rule(
             check(name != null && !name.isBlank(), RkCode.INCOMPLETE_RULE,
                     "a rule needs a name (the element name in its group)", null);
             // The law itself is in the shared leaf, so this builder, Computation.Builder and the portable
-            // checker cannot drift apart — which they already had: the computation copy was missing until
-            // 2026-09-12, because the code reads as a rule's law.
+            // checker cannot drift apart — an easy miss for the computation side, because the code reads as
+            // a rule's law.
             check(!ElementNamePredicatesKt.isReservedElementName(name), KernelCode.MVK_RULE_NAME_INVALID,
                     "rule names beginning with vk_vk (any letter case) are reserved by the kernel"
                             + " — pick a different name",

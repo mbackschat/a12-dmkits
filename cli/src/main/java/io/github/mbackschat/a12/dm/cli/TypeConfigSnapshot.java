@@ -16,9 +16,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 /**
  * The per-kind config a type-carrying {@code field modify} or {@code typedef modify} replaces, captured before
  * and after the edit so the keys it removed can be reported. The modify spec is the add spec, and like
- * {@code computation modify} it replaces rather than merges; the 2026-11-08 probes (tasks 02 and 10) showed the
- * replacement removing constraints with an {@code applied} result and nothing else, so every route that runs
- * these edits, standalone and {@code apply}, reports the removal through this one comparison.
+ * {@code computation modify} it replaces rather than merges. Without a report, that replacement removes
+ * constraints under an {@code applied} result and nothing else, so every route that runs these edits,
+ * standalone and {@code apply}, reports the removal through this one comparison.
  *
  * <p>Only a same-kind edit is compared: a kind change discards the old kind's block by definition and has its
  * own advisory. A side typed by reference ({@code typedef}) has no config of its own, so it is not compared.

@@ -19,12 +19,12 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * **The FLOOR is not carrier-dependent, and A12's side of it was already measured** — [KERNEL-FINDINGS
  * KF221], `adapter.laws.GroupRepeatabilityDomainLawsTest`: the domain is any integer `> 0`, and `0`, `null`
- * and `-1` draw `MVK_MAX_VALUES_INVALID`. What this family did with that until 2026-09-16 was nothing: it
- * held only the upper half, so a stored `"repeatability":0` was reported by A12 and silent here. The two
- * boundary cells KF221 did not carry were measured the same day and extend it there — the signed 32-bit
- * floor still draws the class, one below it is refused as malformed input exactly as one above the ceiling
- * is. The silence was one of the false-pass routes the coverage residue names
- * (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN, the codegen tier).
+ * and `-1` draw `MVK_MAX_VALUES_INVALID`. This family holds the lower half as well as the upper one, so a
+ * stored `"repeatability":0`, which A12 reports, is not silent here. The two boundary cells KF221 did not
+ * carry were measured 2026-09-16 and extend it there — the signed 32-bit floor still draws the class, one
+ * below it is refused as malformed input exactly as one above the ceiling is. A silence on the floor is one
+ * of the false-pass routes the coverage residue names (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN, the codegen
+ * tier).
  *
  * **The sibling law demanding the count be DECLARED has no stored spelling and is deliberately silent.**
  * `CodeGenValidationDataCollector` writes the count it derived rather than the member it read, so

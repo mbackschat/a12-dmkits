@@ -18,12 +18,12 @@ import java.util.Set;
  * {@code throw} whose bucket says the kernel decides, which is how a stale classification becomes a failing
  * build rather than a sentence nobody re-reads.
  *
- * <p><b>The buckets are NOT asserted equal to {@code docs/MVK-LEDGER.md}, deliberately (2026-09-20).</b>
- * They restate the same fact, so a lock belongs here — but the ledger's conformance column has since grown
+ * <p><b>The buckets are NOT asserted equal to {@code docs/MVK-LEDGER.md}, deliberately.</b>
+ * They restate the same fact, so a lock belongs here — but the ledger's conformance column carries
  * two further dimensions this closed vocabulary cannot express: a {@code / checker-reported} half that
  * {@code CheckerLedgerDispositionGuardTest} derives from the portable checker's own sources, and per-row
- * reachability qualifiers. Measured 2026-09-20, each quantity named because an earlier version of this
- * paragraph stated two that could not be reproduced: this enum carries 307 codes against the ledger's 306
+ * reachability qualifiers. Measured 2026-09-20, each quantity named so that it can be reproduced: this enum
+ * carries 307 codes against the ledger's 306
  * {@code MVK_*} rows, 45 of those rows name no conformance atom at all, and of the 261 that do, 32 carry an
  * atom set the seeding below does not. Reconciling the two taxonomies is a decision about what
  * that column means, not a merge; until it is taken, this enum's buckets are the kits' own statement and

@@ -439,8 +439,8 @@ private fun unmountableRoot(root: JsonObject, reference: String): String? =
  * `1.9`, `1.5`, `1.1`, `0.5`, `0`, `-1`, `-1.5` are admitted while `2` and `2.1` are not ([KERNEL-FINDINGS
  * KF3]). A STRING binds as an INTEGER instead: `"1"`, `" 1 "`, `"01"`, `"0"` and `"-1"` are admitted, `"1.5"`,
  * `"1f"`, `"NaN"` and `"one"` are reader refusals, and `"2"` reaches the repeatable test (measured 2026-09-15,
- * `adapter.WorkspaceIncludeStructureKernelTest`, after this function had generalized the number rule to strings and
- * so mounted providers A12 refuses). The member is a primitive `int`, so on kernel 31 a JSON `null` and the empty
+ * `adapter.WorkspaceIncludeStructureKernelTest`); generalizing the number rule to strings would mount providers
+ * A12 refuses. The member is a primitive `int`, so on kernel 31 a JSON `null` and the empty
  * string are reader refusals too (KF593).
  */
 private fun JsonObject?.singleRootRepeatabilityRefusal(): String? {

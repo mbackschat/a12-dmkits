@@ -1239,7 +1239,7 @@ public final class ModelDocument {
     }
 
     /** Remove the model base year, so year-less dates lose their resolution point — the inverse of
-     *  {@link #setBaseYear}. Absence was always readable and, until 2026-08-31, unreachable. */
+     *  {@link #setBaseYear}. Absence is readable on load; this makes it reachable by authoring. */
     public ModelDocument clearBaseYear() {
         modelInfo().remove(DmKeys.BASE_YEAR);
         return this;

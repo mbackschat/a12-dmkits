@@ -52,9 +52,9 @@ final class SchemaCommand extends BaseCommand {
     /**
      * The two batch op-record frames. They are ordinary VERBS, so their schema is served as a verb contract
      * like every other one — the frame document rides {@code input}, beside a worked, CI-executed example.
-     * It used to be served raw at the top level because the name resolved as a "frame" before it resolved as
-     * a verb, which left {@code .input} null on exactly the two responses whose shape is least guessable
-     * (reported by a12-kernel-lean, 2026-09-22). The list survives only to name them in the no-arg listing.
+     * Serving them raw at the top level, as a "frame" resolved before a verb, would leave {@code .input} null
+     * on exactly the two responses whose shape is least guessable. The list survives only to name them in the
+     * no-arg listing.
      */
     static final List<String> FRAMES = List.of("apply", "batch");
 

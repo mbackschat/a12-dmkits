@@ -157,8 +157,8 @@ public record CountAggregate(CountOp op, List<AggregateOperand> operands) implem
     }
 
     /**
-     * NumberOfDifferentValues compares values, so its operands must be type-homogeneous (verified
-     * 2026-06-04; temporal operands added 2026-07-25): string/enum/custom together, all numbers, or all
+     * NumberOfDifferentValues compares values, so its operands must be type-homogeneous (verified 2026-06-04):
+     * string/enum/custom together, all numbers, or all
      * <b>date-like</b> (DATE/DATE_FRAGMENT/TIME/DATETIME — the kernel's own code name says so and it accepts
      * each pair, {@code validate.laws.NumberOfDifferentValuesKindLawsTest}). Booleans/confirms never.
      *

@@ -328,7 +328,7 @@ public final class DslRenderer {
      * whichever count operator holds it, and mixing it with fixed groups is fine; the record holds a group as
      * that scope ({@code CountAggregate.scopeOf}), so it renders as any other scope does.
      *
-     * <p>It used to be starred for {@code NumberOfFilledGroups} only, which made
+     * <p>Starring it for {@code NumberOfFilledGroups} only would make
      * {@code Dsl.numberOfFilledFields(GroupRef)} emit a condition the kernel refuses outright —
      * {@code MVK_NO_WILDCARD}, measured 2026-08-12 on a repeatable group, alongside the acceptance of the
      * same operand starred and of an unstarred NON-repeatable group. The star is a property of the operand,

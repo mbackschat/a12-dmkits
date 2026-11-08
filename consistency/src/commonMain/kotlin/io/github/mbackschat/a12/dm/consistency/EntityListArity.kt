@@ -51,7 +51,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * `checkFilterCondition` judges it while the list is built, so a lone filtered field draws the filter's
  * `MVK_WILDCARDS_REQUIRED` and never the arity class. That one is not a repetition shape at all — a lone
  * filtered field on a NON-repeating path draws it too — so the rule above does not cover it, and the two
- * were reported together until it was measured (2026-09-15, [filteredOperandKindFindings]).
+ * are reported apart (measured 2026-09-15, [filteredOperandKindFindings]).
  *
  * **Silent wherever a gate ahead of the arity one answers**: a repeated entity is `MVK_DUPLICATE_PARAM1`, a
  * root group `MVK_ROOT_GROUP_REFERENCED`, a category selector `MVK_CATEGORY_NOT_ALLOWED`, and an entity no

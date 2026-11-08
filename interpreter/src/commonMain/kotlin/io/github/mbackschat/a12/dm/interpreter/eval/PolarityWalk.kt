@@ -83,7 +83,7 @@ internal fun Interpreter.evalTyped(c: Cond): Res = when (c) {
 internal fun Interpreter.evalTypedLazy(c: Cond): Res {
     // Validation walks HERE, not through the plain condition dispatch: `firedType` needs a node's polarity, so
     // a rule evaluated by `validate` never reaches `evalCond`. Counting only there reported a 200-message
-    // validation as doing zero condition work (measured 2026-09-19, which is how this site was found).
+    // validation as doing zero condition work (measured 2026-09-19).
     work?.conditionNode()
     return evalTypedLazyNode(c)
 }

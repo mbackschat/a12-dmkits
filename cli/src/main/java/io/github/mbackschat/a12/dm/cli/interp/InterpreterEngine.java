@@ -110,8 +110,7 @@ public final class InterpreterEngine {
      *
      * <p>Kernel-free, which is what keeps the EVAL path native-safe — the kernel's Groovy codegen cannot go
      * native. <b>Not</b> because the native binary lacks the kernel; it carries it and serves the
-     * consistency oracle from it, on both artifacts. This javadoc claimed the opposite until 2026-09-16
-     * ("the native binary where the MVK consistency oracle is unavailable"); the evidence lives in
+     * consistency oracle from it, on both artifacts. The evidence lives in
      * {@code docs/NATIVE-IMAGE-GRAALVM.md} §3.8 and is deliberately not repeated here.
      */
     public static List<UndeclaredReference> undeclaredReferences(String modelJson) {

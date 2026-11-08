@@ -362,8 +362,8 @@ public record Computation(
             require(name != null && !name.isBlank(), "a computation needs a name — name(...)");
             // The reserved namespace is not the rule element's alone, despite the code's name: the kernel
             // rejects a computation called vk_vk_* with exactly this code (measured 2026-09-12 on both
-            // carriers, locked by validate.laws.ComputationSlotLawsTest). Rule.Builder has pre-checked it
-            // since 2026-06-10; this side was missed because the code reads as a rule's law.
+            // carriers, locked by validate.laws.ComputationSlotLawsTest). Rule.Builder pre-checks it as well;
+            // the code reads as a rule's law, so this side is the easy one to miss.
             require(!ElementNamePredicatesKt.isReservedElementName(name), KernelCode.MVK_RULE_NAME_INVALID,
                     "computation names beginning with vk_vk (any letter case) are reserved by the kernel"
                             + " — pick a different name");

@@ -240,8 +240,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // The @From scope DOES count as a reference — measured 2026-07-25: with @From the kernel accepts an
             // error field that only the scope contains, and without it the same shape draws
             // MVK_ERROR_FIELD_NOT_REFERENCED, so the keys' own group is NOT an implicit reference
-            // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produced a false advisory
-            // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
+            // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produces a false advisory
+            // on a kernel-legal rule.
             case RepetitionNotUniqueCondition r -> {
                 r.keys().forEach(refs::field);
                 r.scope().ifPresent(s -> refs.group(s.path().value(), false));

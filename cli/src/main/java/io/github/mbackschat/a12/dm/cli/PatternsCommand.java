@@ -190,7 +190,7 @@ final class PatternsCommand extends BaseCommand {
             // (uniquely on this verb) `Computation.Builder.build()`'s pre-checks, since a pattern instantiates
             // the TYPED object rather than a draft. That last class prints an MVK_* code, so a bare stderr line
             // is indistinguishable from a kernel verdict to anything reading the process — the defect
-            // a12-kernel-lean reported on `field add` (2026-08-29), one verb over.
+            // a12-kernel-lean reported on `field add`, one verb over.
             return rejectSpecValue(ResultIdentity.PATTERNS_SCAFFOLD, "pattern arguments", pattern.id(), bad);
         } catch (PrecheckException refused) {
             // The kits' typed builders refuse here — and uniquely on this verb, because a pattern instantiates

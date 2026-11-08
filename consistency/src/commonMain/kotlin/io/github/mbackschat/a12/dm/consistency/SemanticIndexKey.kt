@@ -31,7 +31,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * **And it is asked only of a key the RULE reads directly.** Inside a `Having` filter the anchoring is the
  * filtered entity rather than the error target, and A12 draws no iteration class there: two measured shapes
  * are answered by the key-kind gate and by the filter's own branch instead ([KERNEL-FINDINGS KF377]). Asking
- * it there named a class A12 does not draw, on both of them, until 2026-09-14.
+ * it there would name a class A12 does not draw, on both of them.
  *
  * **Silent on a key that does not resolve** (`MVK_INVALID_ENTITY`, the reference family's) and on a LITERAL
  * key, which puts a string in the key position and is subject to the value gates instead.

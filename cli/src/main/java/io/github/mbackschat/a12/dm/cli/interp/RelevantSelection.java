@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity;
  * the kernel's {@link RelevantEntity#ALL ALL_SEMANTIC}; a positive {@code [n]} selects one repetition. The model
  * path is validated before evaluation, so a typo never becomes an empty/clean result.
  *
- * <h2>An omitted index on a repeatable segment is REFUSED (breaking, 2026-08-01)</h2>
+ * <h2>An omitted index on a repeatable segment is REFUSED (breaking)</h2>
  *
  * <p>This type used to read an omitted index as <b>all repetitions</b>. A12 reads an omitted index as
  * <b>repetition 1</b> — on the exact {@code DocumentPointer} and on the multipointer alike — so the same string

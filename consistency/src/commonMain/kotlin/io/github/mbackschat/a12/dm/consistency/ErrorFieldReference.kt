@@ -29,8 +29,8 @@ import kotlinx.serialization.json.JsonObject
  * with the filter flag off or carrying the `$` marker (source-read), so the target read only in a filter's body
  * is this class and the same read marked is not (`adapter.laws.CheckerRuleReferenceSetAgreementTest`,
  * [KERNEL-FINDINGS KF488]); both the reach test and the name backstop below read that text alone
- * ([rulesOwnReadsIn]). Until 2026-09-26 a body reference counted as reaching, which kept this family silent
- * there. The ITERATION pre-emption does not count filter references either, which is measured: an
+ * ([rulesOwnReadsIn]); counting a body reference as reaching would keep this family silent there. The
+ * ITERATION pre-emption does not count filter references either, which is measured: an
  * unstarred leaf inside a filter does not draw the iteration class, and treating it as if it did silenced
  * this family on three corpus mutants A12 answers with its own class ([KERNEL-FINDINGS KF424]).
  *
