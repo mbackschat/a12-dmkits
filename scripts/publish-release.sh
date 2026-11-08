@@ -82,6 +82,13 @@ if [[ "$GO_LIVE" == 1 ]]; then
     echo "release $TAG is already published — project policy treats published releases as immutable; cut a patch release instead." >&2
     exit 1
   }
+  # The four repositories release one version together (RELEASE-SPEC §4a), and dmtool's flip is the last public step.
+  for library in mbackschat/a12-interpreter-releases mbackschat/a12-consistency-releases; do
+    [[ "$(gh release view "$TAG" --repo "$library" --json isDraft -q '.isDraft' 2>/dev/null)" == "false" ]] || {
+      echo "release $TAG is not published on $library — the libraries go live first (scripts/typescript/release.ts go-live $VER)." >&2
+      exit 1
+    }
+  done
   say "Verify all assets present before going live"
   assets="$(gh release view "$TAG" --repo "$MIRROR" --json assets -q '.assets[].name' | sort)"
   echo "$assets"
