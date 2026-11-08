@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 **Headline topics only.** An entry names the capabilities and breaking changes a user would notice, not every fix behind them; the source repo's git history is the complete record.
 
-## [Unreleased] — kernel 31.3.1 (A12 Tools 2026.06-ext2)
+## [0.16.0] — kernel 31.3.1 (A12 Tools 2026.06-ext2)
 
 ### Added
 

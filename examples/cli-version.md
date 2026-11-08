@@ -13,7 +13,7 @@ dmtool --version | sed -E 's/(source: )[0-9a-f]{40} \((clean|dirty)\)/\1<git-rev
 ```
 
 ```output
-a12-dmkits 0.15.0
+a12-dmkits 0.16.0
   source: <git-revision> (<tree-state>)
   kernel: 31.3.1 (built) / 31.3.1 (runtime)
   A12 Tools distribution: 2026.06-ext2
@@ -30,7 +30,7 @@ dmtool manifest | jq '.version | .source = {revision: "<git-revision>", state: "
 
 ```output
 {
-  "rulekit": "0.15.0",
+  "rulekit": "0.16.0",
   "source": {
     "revision": "<git-revision>",
     "state": "<tree-state>"

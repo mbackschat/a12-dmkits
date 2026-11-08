@@ -1387,37 +1387,7 @@
       ]
     },
     {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WritePairCopy$4",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WritePairCopy$6",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteQuoteCopy$4",
+      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WritePairCopy$5",
       "methods": [
         {
           "name": "<init>",
@@ -1447,7 +1417,7 @@
       ]
     },
     {
-      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteRepeatedCopy$5",
+      "type": "Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_R1_dispatch_002dliteral_002dcli$mvk_WriteRepeatedCopy$4",
       "methods": [
         {
           "name": "<init>",
@@ -8597,33 +8567,6 @@
       "type": "Script_be9f128cfef2979eb895e9ec6d0803dfCustomizer"
     },
     {
-      "type": "Script_c103c6d5894ea99d15222630d0aef71b",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_c103c6d5894ea99d15222630d0aef71bBeanInfo"
-    },
-    {
-      "type": "Script_c103c6d5894ea99d15222630d0aef71bCustomizer"
-    },
-    {
       "type": "Script_c4b7936963e82024946fd7e69021937f",
       "methods": [
         {
@@ -8730,6 +8673,33 @@
     },
     {
       "type": "Script_cad676bf341305d50fe8037df0884d3eCustomizer"
+    },
+    {
+      "type": "Script_ce4435a69110dab10de8f96013300a8d",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_ce4435a69110dab10de8f96013300a8dBeanInfo"
+    },
+    {
+      "type": "Script_ce4435a69110dab10de8f96013300a8dCustomizer"
     },
     {
       "type": "Script_d0af137000fd6d7f987296d2ea96dc24",
@@ -9075,33 +9045,6 @@
       "type": "Script_f8c6ac47d0072b0793da74f028527073Customizer"
     },
     {
-      "type": "Script_f8e901beded5a16f317cbab67284ee16",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
-          "parameterTypes": []
-        },
-        {
-          "name": "getMetaModel",
-          "parameterTypes": []
-        },
-        {
-          "name": "getValidator",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Script_f8e901beded5a16f317cbab67284ee16BeanInfo"
-    },
-    {
-      "type": "Script_f8e901beded5a16f317cbab67284ee16Customizer"
-    },
-    {
       "type": "Script_fcf130499f6f4fdafbaf2d47d9981157",
       "methods": [
         {
@@ -9144,8 +9087,7 @@
       ]
     },
     {
-      "type": "byte[]",
-      "serializable": true
+      "type": "byte[]"
     },
     {
       "type": "char"
@@ -10349,6 +10291,23 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.TimeConstructionOperation",
+      "methods": [
+        {
+          "name": "getHourCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMinuteCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getSecondCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateRangeTypeImpl",
       "methods": [
         {
@@ -11460,21 +11419,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.CalculationController$handleBerechnetenWert$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.CalculationController$initFuerBerechnung",
       "methods": [
         {
@@ -11591,7 +11535,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.MainValidatorController$preliminaryError$0",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.MainValidatorController$preliminaryError$1",
       "methods": [
         {
           "name": "<init>",
@@ -11718,36 +11662,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$alleFelderAngegeben$6",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$alleKontexteAngegeben$0",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$alleKontexteAngegeben$1",
       "methods": [
         {
@@ -11793,7 +11707,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$anzahlAngegebenerFelder$5",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$anzahlAngegebenerFelder$14",
       "methods": [
         {
           "name": "<init>",
@@ -11808,7 +11722,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$anzahlAngegebenerKontexte$4",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$anzahlAngegebenerKontexte$13",
       "methods": [
         {
           "name": "<init>",
@@ -11838,7 +11752,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWert$11",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWert$12",
       "methods": [
         {
           "name": "<init>",
@@ -11853,7 +11767,22 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWert$12",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWert$13",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWert$15",
       "methods": [
         {
           "name": "<init>",
@@ -11883,36 +11812,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsDatum$10",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsDatum$18",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsDatum$5",
       "methods": [
         {
@@ -11928,7 +11827,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsZahl$1",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsDatum$9",
       "methods": [
         {
           "name": "<init>",
@@ -11973,7 +11872,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsZahl$7",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$feldWertAlsZahl$6",
       "methods": [
         {
           "name": "<init>",
@@ -11988,22 +11887,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getDifferenzInTagen$11",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getDifferenzInTagen$19",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getDifferenzInTagen$10",
       "methods": [
         {
           "name": "<init>",
@@ -12063,21 +11947,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getMaxGesetzterKontext$10",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getMaxGesetzterKontext$3",
       "methods": [
         {
@@ -12123,37 +11992,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getValidationCache$3",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getValidationCache$4",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$getValidationCache$6",
       "methods": [
         {
           "name": "<init>",
@@ -12213,6 +12052,36 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$keinFeldAngegeben$4",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$keinFeldAngegeben$9",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$keinFeldWertInWerteListeFL$15",
       "methods": [
         {
@@ -12243,7 +12112,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$1",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$11",
       "methods": [
         {
           "name": "<init>",
@@ -12258,7 +12127,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$11",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$12",
       "methods": [
         {
           "name": "<init>",
@@ -12303,21 +12172,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$4",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$5",
       "methods": [
         {
@@ -12334,21 +12188,6 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$7",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$logMessung$8",
       "methods": [
         {
           "name": "<init>",
@@ -12393,21 +12232,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeDecimal$2",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeDecimal$3",
       "methods": [
         {
@@ -12438,21 +12262,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeDecimal$8",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeIdentifier$1",
       "methods": [
         {
@@ -12468,7 +12277,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeIdentifier$6",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeIdentifier$11",
       "methods": [
         {
           "name": "<init>",
@@ -12483,7 +12292,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeIdentifier$7",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$makeIdentifier$6",
       "methods": [
         {
           "name": "<init>",
@@ -12603,21 +12412,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleiche$3",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleiche$4",
       "methods": [
         {
@@ -12648,7 +12442,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleiche$9",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleichePatternSTRING$13",
       "methods": [
         {
           "name": "<init>",
@@ -12663,7 +12457,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleichePatternSTRING$13",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleichePatternSTRING$14",
       "methods": [
         {
           "name": "<init>",
@@ -12693,7 +12487,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleicheSTRING$12",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.RuntimeController$vergleicheSTRING$16",
       "methods": [
         {
           "name": "<init>",
@@ -12747,7 +12541,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.ValidationCache$isValidationPartWith3ValueLogic",
+      "type": "com.mgmtp.a12.kernel.core.rt._31_3.internal.core.ValidationCache$isValidationPartWith3ValueLogic$0",
       "methods": [
         {
           "name": "<init>",
@@ -16969,9 +16763,6 @@
       "type": "groovy.runtime.metaclass.Script_be9f128cfef2979eb895e9ec6d0803dfMetaClass"
     },
     {
-      "type": "groovy.runtime.metaclass.Script_c103c6d5894ea99d15222630d0aef71bMetaClass"
-    },
-    {
       "type": "groovy.runtime.metaclass.Script_c4b7936963e82024946fd7e69021937fMetaClass"
     },
     {
@@ -16982,6 +16773,9 @@
     },
     {
       "type": "groovy.runtime.metaclass.Script_cad676bf341305d50fe8037df0884d3eMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_ce4435a69110dab10de8f96013300a8dMetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_d0af137000fd6d7f987296d2ea96dc24MetaClass"
@@ -17021,9 +16815,6 @@
     },
     {
       "type": "groovy.runtime.metaclass.Script_f8c6ac47d0072b0793da74f028527073MetaClass"
-    },
-    {
-      "type": "groovy.runtime.metaclass.Script_f8e901beded5a16f317cbab67284ee16MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_fcf130499f6f4fdafbaf2d47d9981157MetaClass"
@@ -20530,15 +20321,10 @@
       "type": "java.lang.Appendable"
     },
     {
-      "type": "java.lang.AssertionError",
-      "serializable": true
-    },
-    {
       "type": "java.lang.AutoCloseable"
     },
     {
       "type": "java.lang.Boolean",
-      "serializable": true,
       "jniAccessible": true,
       "methods": [
         {
@@ -20612,10 +20398,6 @@
     },
     {
       "type": "java.lang.EnumCustomizer"
-    },
-    {
-      "type": "java.lang.Error",
-      "serializable": true
     },
     {
       "type": "java.lang.Float"
@@ -20711,16 +20493,7 @@
       "type": "java.lang.Short"
     },
     {
-      "type": "java.lang.StackTraceElement",
-      "serializable": true
-    },
-    {
-      "type": "java.lang.StackTraceElement[]",
-      "serializable": true
-    },
-    {
-      "type": "java.lang.String",
-      "serializable": true
+      "type": "java.lang.String"
     },
     {
       "type": "java.lang.StringBeanInfo"
@@ -20753,8 +20526,7 @@
       "type": "java.lang.Thread"
     },
     {
-      "type": "java.lang.Throwable",
-      "serializable": true
+      "type": "java.lang.Throwable"
     },
     {
       "type": "java.lang.annotation.Annotation[]"
@@ -20963,7 +20735,6 @@
     },
     {
       "type": "java.util.ArrayList",
-      "serializable": true,
       "methods": [
         {
           "name": "<init>",
@@ -21015,10 +20786,6 @@
     },
     {
       "type": "java.util.Collection"
-    },
-    {
-      "type": "java.util.Collections$EmptyList",
-      "serializable": true
     },
     {
       "type": "java.util.Collections$SingletonList"
@@ -21376,21 +21143,6 @@
       ]
     },
     {
-      "type": "java_util_List$contains$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "java_util_List$contains$2",
       "methods": [
         {
@@ -21407,36 +21159,6 @@
     },
     {
       "type": "java_util_List$get$0",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "java_util_List$get$2",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "java_util_List$size$0",
       "methods": [
         {
           "name": "<init>",
@@ -22194,18 +21916,6 @@
       "type": "org.gradle.internal.logging.slf4j.StaticLoggerProvider"
     },
     {
-      "type": "org.gradle.internal.serialize.ExceptionPlaceholder",
-      "serializable": true
-    },
-    {
-      "type": "org.gradle.internal.serialize.StackTraceElementPlaceholder",
-      "serializable": true
-    },
-    {
-      "type": "org.gradle.internal.serialize.TopLevelExceptionPlaceholder",
-      "serializable": true
-    },
-    {
       "type": "org.junit.jupiter.engine.JupiterTestEngine"
     },
     {
@@ -22214,14 +21924,6 @@
     },
     {
       "type": "org.junit.platform.launcher.listeners.UniqueIdTrackingListener"
-    },
-    {
-      "type": "org.opentest4j.AssertionFailedError",
-      "serializable": true
-    },
-    {
-      "type": "org.opentest4j.ValueWrapper",
-      "serializable": true
     },
     {
       "type": "org.slf4j.nop.NOPServiceProvider"
@@ -31007,33 +30709,6 @@
       "glob": "Script_be9f128cfef2979eb895e9ec6d0803dfCustomizer.groovy"
     },
     {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_ERValidator_dispatch_002dliteral_002dcli.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_Meta_dispatch_002dliteral_002dcli.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$com$mgmtp$a12$kernel$core$rt$_31_3$internal$core.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$com$mgmtp$a12$kernel$core$rt$_31_3$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$com$mgmtp$a12$kernel$core$rt$_31_3$internal$meta.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$com$mgmtp$a12$kernel$core$rt$_31_3$internal$util.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71b$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71bBeanInfo.groovy"
-    },
-    {
-      "glob": "Script_c103c6d5894ea99d15222630d0aef71bCustomizer.groovy"
-    },
-    {
       "glob": "Script_c4b7936963e82024946fd7e69021937f$Com_mgmtp_a12_kernel_generated_importedmodel_internal_ERValidator_importedmodel.class"
     },
     {
@@ -31140,6 +30815,33 @@
     },
     {
       "glob": "Script_cad676bf341305d50fe8037df0884d3eCustomizer.groovy"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_ERValidator_dispatch_002dliteral_002dcli.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_Meta_dispatch_002dliteral_002dcli.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$com$mgmtp$a12$kernel$core$rt$_31_3$internal$core.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$com$mgmtp$a12$kernel$core$rt$_31_3$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$com$mgmtp$a12$kernel$core$rt$_31_3$internal$meta.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$com$mgmtp$a12$kernel$core$rt$_31_3$internal$util.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8d$com$mgmtp$a12$utils$conversion$a12internal$util.class"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8dBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_ce4435a69110dab10de8f96013300a8dCustomizer.groovy"
     },
     {
       "glob": "Script_d0af137000fd6d7f987296d2ea96dc24$Com_mgmtp_a12_kernel_generated_tariff_002drendered_002dkeys_002dcli_internal_ERValidator_tariff_002drendered_002dkeys_002dcli.class"
@@ -31491,33 +31193,6 @@
     },
     {
       "glob": "Script_f8c6ac47d0072b0793da74f028527073Customizer.groovy"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_ERValidator_dispatch_002dliteral_002dcli.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$Com_mgmtp_a12_kernel_generated_dispatch_002dliteral_002dcli_internal_Meta_dispatch_002dliteral_002dcli.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$com$mgmtp$a12$kernel$core$rt$_31_3$internal$core.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$com$mgmtp$a12$kernel$core$rt$_31_3$internal$formatdef.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$com$mgmtp$a12$kernel$core$rt$_31_3$internal$meta.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$com$mgmtp$a12$kernel$core$rt$_31_3$internal$util.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16$com$mgmtp$a12$utils$conversion$a12internal$util.class"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16BeanInfo.groovy"
-    },
-    {
-      "glob": "Script_f8e901beded5a16f317cbab67284ee16Customizer.groovy"
     },
     {
       "glob": "Script_fcf130499f6f4fdafbaf2d47d9981157$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
@@ -35589,6 +35264,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/SetOpOperation.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/operationsDir/TimeConstructionOperation.st"
     },
     {
       "glob": "internal/templates/validation/groovy/root.stg"
